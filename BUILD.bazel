@@ -1,0 +1,81 @@
+# Standalone logging library. Include root is the repository root (no Logging/logging/ nesting).
+load("//bazel:logging.bzl", "logging_copts", "logging_defines", "logging_linkopts")
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "logging_hdrs",
+    srcs = glob(
+        [
+            "*.h",
+            "common/*.h",
+            "util/*.h",
+            "logger/*.h",
+        ],
+        allow_empty = True,
+    ),
+)
+
+filegroup(
+    name = "logging_srcs",
+    srcs = glob(
+        [
+            "util/*.cpp",
+        ],
+        allow_empty = True,
+    ),
+)
+
+cc_library(
+    name = "logging_lib",
+    srcs = [
+        ":logging_srcs",
+        "logger/back_trace.cpp",
+        "logger/logger.cpp",
+    ],
+    hdrs = [":logging_hdrs"],
+    copts = logging_copts(),
+    defines = logging_defines() + select({
+        "//bazel:shared_libs": ["LOGGING_SHARED_DEFINE"],
+        "//conditions:default": ["LOGGING_STATIC_DEFINE"],
+    }),
+    local_defines = select({
+        "//bazel:shared_libs": ["LOGGING_BUILDING_DLL"],
+        "//conditions:default": [],
+    }),
+    # No "." in includes: the package is the workspace root, so Bazel's default
+    # -iquote <workspace_root> already resolves "common/..." and "util/..." headers
+    # (includes = ["."] is rejected at the workspace root by Bazel 8+). "logger"
+    # stays: sources include bare "logger.h".
+    includes = ["logger"],
+    linkopts = logging_linkopts() + select({
+        "@platforms//os:windows": ["dbghelp.lib"],
+        "//conditions:default": [],
+    }),
+    linkstatic = select({
+        "//bazel:shared_libs": False,
+        "//conditions:default": True,
+    }),
+    deps = [
+        "@fmt//:fmt",
+    ] + select({
+        "//bazel:disable_magic_enum": [],
+        "//conditions:default": ["@magic_enum//:magic_enum"],
+    }) + select({
+        "//bazel:logging_glog": ["@glog//:glog"],
+        "//bazel:logging_loguru": ["@loguru//:loguru"],
+        "//bazel:logging_native": [],
+        "//bazel:logging_spdlog": ["@spdlog//:spdlog"],
+        "//conditions:default": ["@loguru//:loguru"],
+    }),
+    alwayslink = False,
+    visibility = [
+        "//visibility:public",
+    ],
+)
+
+cc_library(
+    name = "Logging",
+    deps = [":logging_lib"],
+    visibility = ["//visibility:public"],
+)

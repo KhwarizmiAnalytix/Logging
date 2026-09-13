@@ -1,0 +1,74 @@
+# =============================================================================
+# Logging — Bazel workspace (standalone)
+# =============================================================================
+# Standalone Bazel build for the Logging library. When consumed from XSigma,
+# XSigma's own workspace provides an overlay BUILD file instead — do not edit
+# this repo's vendored third-party trees.
+# =============================================================================
+
+workspace(name = "xsigma_logging")
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+# =============================================================================
+# Bazel Skylib
+# =============================================================================
+http_archive(
+    name = "bazel_skylib",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz",
+    ],
+)
+
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
+
+# =============================================================================
+# Logging backend / feature dependencies — vendored nested submodules
+# (ThirdParty/), pinned to the same commits XSigma uses.
+# =============================================================================
+
+new_local_repository(
+    name = "fmt",
+    path = "ThirdParty/fmt",
+    build_file = "//ThirdParty:fmt.BUILD",
+)
+
+new_local_repository(
+    name = "magic_enum",
+    path = "ThirdParty/magic_enum",
+    build_file = "//ThirdParty:magic_enum.BUILD",
+)
+
+# glog ships its own BUILD.bazel.
+local_repository(
+    name = "glog",
+    path = "ThirdParty/glog",
+)
+
+new_local_repository(
+    name = "loguru",
+    path = "ThirdParty/loguru",
+    build_file = "//ThirdParty:loguru.BUILD",
+)
+
+new_local_repository(
+    name = "spdlog",
+    path = "ThirdParty/spdlog",
+    build_file = "//ThirdParty:spdlog.BUILD",
+)
+
+# =============================================================================
+# Google Test / Benchmark — vendored nested submodules (ThirdParty/)
+# =============================================================================
+local_repository(
+    name = "com_google_googletest",
+    path = "ThirdParty/googletest",
+)
+
+local_repository(
+    name = "com_google_benchmark",
+    path = "ThirdParty/benchmark",
+)

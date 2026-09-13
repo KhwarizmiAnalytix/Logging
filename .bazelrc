@@ -1,0 +1,9 @@
+# Keep WORKSPACE mode working alongside Bzlmod (same approach as XSigma).
+build --enable_workspace
+
+# C++20 by default (mirrors LOGGING_CXX_STANDARD=20 in CMakeLists.txt).
+build --cxxopt=-std=c++20 --host_cxxopt=-std=c++20
+
+# Backend selection examples:
+#   bazel build //:Logging --define=logging_backend=spdlog
+#   bazel build //:Logging --define=logging_backend=glog

@@ -1,0 +1,80 @@
+# =============================================================================
+# Logging — Bazel Configuration Settings (standalone)
+# =============================================================================
+# Starlark --define keys mirror this repo's CMake cache names: logging_backend,
+# logging_enable_magic_enum, logging_enable_cxa_demangle,
+# logging_enable_portable_float_format, logging_format_use_std,
+# logging_default_exception_mode, build_shared_libs.
+# =============================================================================
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "xsigma.bzl",
+    "logging.bzl",
+])
+
+# =============================================================================
+# Library Type Configuration
+# =============================================================================
+
+config_setting(
+    name = "shared_libs",
+    define_values = {"build_shared_libs": "true"},
+)
+
+# =============================================================================
+# Logging Backend Configuration (mirrors LOGGING_BACKEND)
+# =============================================================================
+
+config_setting(
+    name = "logging_glog",
+    define_values = {"logging_backend": "glog"},
+)
+
+config_setting(
+    name = "logging_loguru",
+    define_values = {"logging_backend": "loguru"},
+)
+
+config_setting(
+    name = "logging_native",
+    define_values = {"logging_backend": "native"},
+)
+
+config_setting(
+    name = "logging_spdlog",
+    define_values = {"logging_backend": "spdlog"},
+)
+
+# =============================================================================
+# Logging Feature Toggles
+# =============================================================================
+
+# Opt-out when the CMake-equivalent default is ON (LOGGING_ENABLE_MAGICENUM).
+# NOTE: keyed on logging_enable_magic_enum here (Logging-owned); in XSigma's
+# workspace the same select is keyed on core_enable_magic_enum (Core-owned).
+config_setting(
+    name = "disable_magic_enum",
+    define_values = {"logging_enable_magic_enum": "false"},
+)
+
+config_setting(
+    name = "disable_logging_cxa_demangle",
+    define_values = {"logging_enable_cxa_demangle": "false"},
+)
+
+config_setting(
+    name = "logging_portable_float_format",
+    define_values = {"logging_enable_portable_float_format": "true"},
+)
+
+config_setting(
+    name = "logging_std_format",
+    define_values = {"logging_format_use_std": "true"},
+)
+
+config_setting(
+    name = "logging_default_log_fatal",
+    define_values = {"logging_default_exception_mode": "log_fatal"},
+)

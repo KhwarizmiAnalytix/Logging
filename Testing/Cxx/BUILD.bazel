@@ -1,0 +1,58 @@
+load("//bazel:logging.bzl", "logging_copts", "logging_defines", "logging_linkopts")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_test(
+    name = "LoggingCxxTests",
+    size = "large",
+    timeout = "long",
+    srcs = glob(
+        ["Test*.cpp"],
+        exclude = ["TestLoggerDisableSignalHandler.cpp"],
+        allow_empty = True,
+    ),
+    copts = logging_copts(),
+    defines = logging_defines() + [
+        "LOGGING_GOOGLE_TEST",
+        "USE_GTEST",
+        "_VARIADIC_MAX=10",
+        "LOGGING_HAS_GTEST=1",
+    ],
+    includes = ["."],
+    linkopts = logging_linkopts(),
+    deps = [
+        "//:Logging",
+        "//Testing:loggingTest_header",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ] + select({
+        "//bazel:logging_glog": ["@glog//:glog"],
+        "//bazel:logging_loguru": ["@loguru//:loguru"],
+        "//bazel:logging_native": [],
+        "//bazel:logging_spdlog": ["@spdlog//:spdlog"],
+        "//conditions:default": ["@loguru//:loguru"],
+    }),
+)
+
+# One cc_binary per Benchmark*.cpp — mirrors Testing/Cxx/CMakeLists.txt.
+[
+    cc_binary(
+        name = "benchmark_" + _src[len("Benchmark"):-len(".cpp")].lower(),
+        srcs = [_src],
+        copts = logging_copts(),
+        defines = logging_defines(),
+        linkopts = logging_linkopts(),
+        deps = [
+            "//:Logging",
+            "@com_google_benchmark//:benchmark",
+            "@com_google_benchmark//:benchmark_main",
+        ] + select({
+            "//bazel:logging_glog": ["@glog//:glog"],
+            "//bazel:logging_loguru": ["@loguru//:loguru"],
+            "//bazel:logging_native": [],
+            "//bazel:logging_spdlog": ["@spdlog//:spdlog"],
+            "//conditions:default": ["@loguru//:loguru"],
+        }),
+    )
+    for _src in glob(["Benchmark*.cpp"], allow_empty = True)
+]

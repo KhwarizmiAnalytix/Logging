@@ -1,0 +1,7 @@
+# Third-party BUILD overlay templates for the vendored nested submodules.
+exports_files([
+    "fmt.BUILD",
+    "loguru.BUILD",
+    "spdlog.BUILD",
+    "magic_enum.BUILD",
+])
