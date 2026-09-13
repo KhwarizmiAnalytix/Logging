@@ -1,15 +1,20 @@
-# Logging (`Library/Logging`)
+# Logging
 
 **Structured logging**: levels, lazy evaluation, back traces, and a pluggable backend —
 **Loguru** (default), **spdlog**, **glog**, or **native** (fmt-based).
 
+Standalone CMake package — any C++ project can consume it via `add_subdirectory`;
+[XSigma](https://github.com/KhwarizmiAnalytix/Hisab) is one consumer, not a required host.
+
 ## Layout
 
 - `CMakeLists.txt` — `LOGGING_BACKEND`, `LOGGING_ENABLE_*`.
-- `BUILD.bazel` — `//Library/Logging:Logging`; backend deps from `select`.
+- `BUILD.bazel` — `//:Logging`; backend deps from `select`.
 - `logger/` — public logger facade, verbosity enum, back traces.
 - `util/` — exceptions, env helpers, string utilities, lazy values.
-- `Testing/Cxx/` — unit tests and `BenchmarkLogger.cpp`.
+- `Testing/Cxx/` — unit tests and `BenchmarkLogger.cpp` (built only standalone).
+- `ThirdParty/` — vendored nested submodules (fmt, loguru, glog, spdlog, magic_enum,
+  googletest, benchmark), pinned to the same commits XSigma uses.
 
 Public C++ namespace: `logging`. Macros: `LOGGING_LOG_*`, `LOGGING_CHECK`, `LOGGING_THROW`.
 

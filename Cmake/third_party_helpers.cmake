@@ -18,6 +18,10 @@ include_guard(GLOBAL)
 option(XSIGMA_ENABLE_EXTERNAL "Use external copies of third party libraries by default" ON)
 mark_as_advanced(XSIGMA_ENABLE_EXTERNAL)
 
+# When embedded in XSigma, XSigma's ThirdParty/CMakeLists.txt has already defined
+# this machinery — keep the host's definitions authoritative.
+if(NOT COMMAND add_third_party_library)
+
 # -----------------------------------------------------------------------------
 # _filter_flags_internal: Remove specified flags from a flag string
 # -----------------------------------------------------------------------------
@@ -759,3 +763,5 @@ function(add_third_party_library name)
         set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS}" PARENT_SCOPE)
     endif()
 endfunction()
+
+endif()  # NOT COMMAND add_third_party_library
