@@ -188,6 +188,7 @@ jobs:
       - name: Test
         env:
           ASAN_OPTIONS: halt_on_error=1:abort_on_error=1
+          LSAN_OPTIONS: suppressions=${{ github.workspace }}/Scripts/suppressions/lsan_suppressions.txt
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: ctest --test-dir build --output-on-failure
 
