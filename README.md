@@ -124,6 +124,7 @@ methodology: [Docs/readme/logging.md](../../Docs/readme/logging.md).
 | `bazel` | `bazel build //...` / `bazel test //...` |
 | `sanitize` | Clang ASan and UBSan (`LOGGING_ENABLE_SANITIZER`) |
 | `coverage` | gcc + gcov/lcov, uploaded to [Codecov](https://codecov.io/gh/KhwarizmiAnalytix/Logging) |
+| `lintrunner` | [`.github/workflows/lint.yml`](.github/workflows/lint.yml) — CLANGFORMAT, CMAKE, CMAKEFORMAT, EDITORCONFIG, NEWLINE, CODESPELL on changed files |
 
 Set the `CODECOV_TOKEN` repository secret to enable the coverage upload. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for running the same checks locally.

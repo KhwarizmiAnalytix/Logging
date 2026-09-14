@@ -33,3 +33,5 @@ coverage_html/
 # Python
 __pycache__/
 *.pyc
+
+.lintbin/
