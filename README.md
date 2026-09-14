@@ -1,5 +1,9 @@
 # Logging
 
+[![CI](https://github.com/KhwarizmiAnalytix/Logging/actions/workflows/ci.yml/badge.svg)](https://github.com/KhwarizmiAnalytix/Logging/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/KhwarizmiAnalytix/Logging/branch/main/graph/badge.svg)](https://codecov.io/gh/KhwarizmiAnalytix/Logging)
+[![License: GPL v3 / Commercial](https://img.shields.io/badge/license-GPL--3.0--or--later%20%2F%20commercial-blue.svg)](LICENSE)
+
 **Structured logging**: levels, lazy evaluation, back traces, and a pluggable backend —
 **Loguru** (default), **spdlog**, **glog**, or **native** (fmt-based).
 
@@ -65,6 +69,18 @@ Use `--config=logging_loguru` (default), `logging_spdlog`, `logging_glog`, or
 `logging_portable_float_format`, `logging_std_format`, `logging_default_log_fatal`,
 and `logging_no_cxa_demangle` configs.
 
+Bazel version is pinned via [`.bazelversion`](.bazelversion) (8.x): `WORKSPACE.bazel`
+wires every `ThirdParty/` submodule in via `local_repository`/`new_local_repository`,
+which Bazel 9 no longer supports (WORKSPACE removed in favor of Bzlmod) — see the
+note in [`.bazelrc`](.bazelrc). Bump the pin only after migrating that wiring to
+Bzlmod equivalents.
+
+Known gap: `--define=logging_backend=glog` fails under Bazel — glog's own
+`BUILD.bazel` unconditionally depends on `@com_github_gflags_gflags`, which this
+repo's `WORKSPACE.bazel` doesn't declare (the CMake build disables gflags via
+`WITH_GFLAGS=OFF` instead, with no Bazel equivalent). `LOGURU`, `SPDLOG`, and
+`NATIVE` build fine; `GLOG` works under CMake but not yet under Bazel.
+
 ## Public API (abridged)
 
 ```cpp
@@ -95,3 +111,19 @@ build_ninja_project_logging_logging_loguru/bin/benchmark_logging_logger --benchm
 
 Reconfigure with `--logging=SPDLOG|GLOG|NATIVE` to compare backends. Numbers and
 methodology: [Docs/readme/logging.md](../../Docs/readme/logging.md).
+
+## CI & Coverage
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push/PR to `main`:
+
+| Job | What |
+|-----|------|
+| `linux` | CMake+Ninja, gcc & clang, all four backends (Release), Debug canary |
+| `macos` | CMake+Ninja, AppleClang, all four backends |
+| `windows` | CMake+MSVC, all four backends |
+| `bazel` | `bazel build //...` / `bazel test //...` |
+| `sanitize` | Clang ASan and UBSan (`LOGGING_ENABLE_SANITIZER`) |
+| `coverage` | gcc + gcov/lcov, uploaded to [Codecov](https://codecov.io/gh/KhwarizmiAnalytix/Logging) |
+
+Set the `CODECOV_TOKEN` repository secret to enable the coverage upload. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for running the same checks locally.

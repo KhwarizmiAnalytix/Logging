@@ -1,4 +1,8 @@
 # Keep WORKSPACE mode working alongside Bzlmod (same approach as XSigma).
+# Requires Bazel 7/8 — WORKSPACE-based repos (local_repository / new_local_repository
+# in WORKSPACE.bazel, wiring every ThirdParty/ submodule) are unsupported starting
+# with Bazel 9. See .bazelversion; bump only after migrating WORKSPACE.bazel to
+# bzlmod (MODULE.bazel) equivalents (e.g. local_path_override / a repo rule).
 build --enable_workspace
 
 # C++20 by default (mirrors LOGGING_CXX_STANDARD=20 in CMakeLists.txt).

@@ -1,4 +1,5 @@
 # Standalone logging library. Include root is the repository root (no Logging/logging/ nesting).
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//bazel:logging.bzl", "logging_copts", "logging_defines", "logging_linkopts")
 
 package(default_visibility = ["//visibility:public"])

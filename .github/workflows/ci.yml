@@ -1,0 +1,250 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Linux: gcc + clang, all four backends, Release; one Debug canary per compiler.
+  # ---------------------------------------------------------------------------
+  linux:
+    name: Linux / ${{ matrix.compiler }} / ${{ matrix.backend }} / ${{ matrix.build_type }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        backend: [LOGURU, SPDLOG, GLOG, NATIVE]
+        build_type: [Release]
+        include:
+          - compiler: gcc
+            backend: LOGURU
+            build_type: Debug
+          - compiler: clang
+            backend: LOGURU
+            build_type: Debug
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Select compiler
+        run: |
+          if [ "${{ matrix.compiler }}" = "gcc" ]; then
+            echo "CC=gcc" >> "$GITHUB_ENV"
+            echo "CXX=g++" >> "$GITHUB_ENV"
+          else
+            echo "CC=clang" >> "$GITHUB_ENV"
+            echo "CXX=clang++" >> "$GITHUB_ENV"
+          fi
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DLOGGING_BACKEND=${{ matrix.backend }}
+          -DLOGGING_ENABLE_BENCHMARK=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  # ---------------------------------------------------------------------------
+  # macOS: AppleClang, all four backends, Release.
+  # ---------------------------------------------------------------------------
+  macos:
+    name: macOS / ${{ matrix.backend }}
+    runs-on: macos-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [LOGURU, SPDLOG, GLOG, NATIVE]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Ninja
+        run: brew install ninja
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DLOGGING_BACKEND=${{ matrix.backend }}
+          -DLOGGING_ENABLE_BENCHMARK=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  # ---------------------------------------------------------------------------
+  # Windows: MSVC, all four backends, Release.
+  # ---------------------------------------------------------------------------
+  windows:
+    name: Windows / ${{ matrix.backend }}
+    runs-on: windows-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [LOGURU, SPDLOG, GLOG, NATIVE]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DLOGGING_BACKEND=${{ matrix.backend }}
+          -DLOGGING_ENABLE_BENCHMARK=ON
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build --build-config Release --output-on-failure
+
+  # ---------------------------------------------------------------------------
+  # Bazel: builds/tests the whole tree (default LOGURU backend).
+  # ---------------------------------------------------------------------------
+  bazel:
+    name: Bazel
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: bazelbuild/setup-bazelisk@v3
+
+      - name: Cache Bazel
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bazel
+          key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'MODULE.bazel.lock', 'WORKSPACE.bazel', 'BUILD.bazel') }}
+          restore-keys: |
+            bazel-${{ runner.os }}-
+
+      - name: Build
+        run: bazel build //...
+
+      - name: Test
+        run: bazel test //... --test_output=errors
+
+  # ---------------------------------------------------------------------------
+  # Sanitizers: Clang ASan and UBSan, default backend, Debug.
+  # ---------------------------------------------------------------------------
+  sanitize:
+    name: Sanitizer / ${{ matrix.sanitizer }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined]
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DLOGGING_BACKEND=LOGURU
+          -DLOGGING_ENABLE_BENCHMARK=OFF
+          -DLOGGING_ENABLE_SANITIZER=ON
+          -DLOGGING_SANITIZER_TYPE=${{ matrix.sanitizer }}
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        env:
+          ASAN_OPTIONS: halt_on_error=1:abort_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: ctest --test-dir build --output-on-failure
+
+  # ---------------------------------------------------------------------------
+  # Coverage: gcc + gcov/lcov, uploaded to Codecov.
+  # ---------------------------------------------------------------------------
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CC: gcc
+      CXX: g++
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build lcov
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DLOGGING_BACKEND=LOGURU
+          -DLOGGING_ENABLE_BENCHMARK=OFF
+          -DLOGGING_ENABLE_COVERAGE=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Collect coverage
+        run: |
+          lcov --capture --directory build --output-file coverage.raw.info \
+            --ignore-errors mismatch,negative,gcov,source
+          lcov --remove coverage.raw.info \
+            '*/ThirdParty/*' '*/Testing/*' '/usr/*' \
+            --ignore-errors unused \
+            --output-file coverage.info
+          lcov --list coverage.info
+
+      - name: Generate HTML report
+        run: genhtml coverage.info --output-directory coverage_html
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage_html
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.info
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}

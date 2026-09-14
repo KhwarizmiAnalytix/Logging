@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # Keep GitHub Actions versions current (runner images, checkout, cache, …).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # ThirdParty/ is nested git submodules (fmt, loguru, glog, spdlog, magic_enum,
+  # googletest, benchmark), pinned to the same commits XSigma uses. Dependabot
+  # opens a PR per update; bump deliberately since XSigma tracks the same pins.
+  - package-ecosystem: "gitsubmodule"
+    directory: "/"
+    schedule:
+      interval: "weekly"
