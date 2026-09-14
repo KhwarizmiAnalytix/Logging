@@ -234,7 +234,7 @@ jobs:
         run: coverage-tool --build=build
 
       - name: Upload HTML report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-html
           path: build/coverage_report/html
