@@ -3,10 +3,10 @@
 #include <memory>
 #include <string>
 
-#include "common/logging_export.h"
-#include "common/logging_macros.h"
+#include "logging/common/logging_export.h"
+#include "logging/common/logging_macros.h"
 #include "logger_verbosity_enum.h"
-#include "util/string_util.h"
+#include "logging/util/string_util.h"
 
 #if defined(__clang__) || defined(__GNUC__)
 #define LOGGING_PRINTF_LIKE(fmtarg, firstvararg) \

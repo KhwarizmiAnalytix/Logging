@@ -9,10 +9,10 @@
 #include <string_view>  // for string_view
 #include <vector>       // for vector
 
-#include "common/logging_macros.h"
-#include "logger/logger.h"
-#include "util/lazy.h"
-#include "util/string_util.h"
+#include "logging/common/logging_macros.h"
+#include "logging/logger/logger.h"
+#include "logging/util/lazy.h"
+#include "logging/util/string_util.h"
 
 #define LOGGING_STRINGIZE_IMPL(x) #x
 #define LOGGING_STRINGIZE(x) LOGGING_STRINGIZE_IMPL(x)

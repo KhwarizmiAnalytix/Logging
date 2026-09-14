@@ -9,7 +9,7 @@
 #include <thread>
 
 #include "LoggingTest.h"
-#include "logger/logger.h"
+#include "logging/logger/logger.h"
 
 TEST(Logger, thread_name_is_per_thread)
 {

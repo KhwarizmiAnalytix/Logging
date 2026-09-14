@@ -6,7 +6,7 @@
 
 #include <cstdlib>
 
-#include "logger/logger.h"
+#include "logging/logger/logger.h"
 
 int main(int /*unused*/, char* /*unused*/[])
 {

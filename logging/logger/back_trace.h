@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "common/logging_export.h"
+#include "logging/common/logging_export.h"
 
 namespace logging
 {

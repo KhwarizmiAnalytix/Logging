@@ -7,7 +7,7 @@ source_folder = "."
 output_format = "html-and-json"
 coverage_report_dir = "coverage_report"
 # Without this, coverage-tool's discover_modules() treats every immediate
-# source subdirectory (common/, logger/, util/) as its own "module", each
+# source subdirectory (logging/) as its own "module", each
 # expected to have its own lib<module>.* + <module>CxxTests binary (XSigma's
 # per-module Library/<Name> convention). Logging builds one flat
 # libLogging.* + LoggingCxxTests, so on the Clang/LLVM coverage path this

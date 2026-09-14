@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "LoggingTest.h"
-#include "util/lazy.h"
+#include "logging/util/lazy.h"
 
 using namespace logging;
 

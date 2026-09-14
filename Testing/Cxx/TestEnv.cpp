@@ -9,7 +9,7 @@
 #include <string>
 
 #include "LoggingTest.h"
-#include "util/env.h"
+#include "logging/util/env.h"
 
 using logging::utils::check_env;
 using logging::utils::get_env;

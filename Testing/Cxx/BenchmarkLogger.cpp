@@ -28,7 +28,7 @@
 #include <unistd.h>
 #endif
 
-#include "logger/logger.h"
+#include "logging/logger/logger.h"
 
 namespace
 {

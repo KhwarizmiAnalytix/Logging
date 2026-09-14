@@ -20,7 +20,7 @@
 #endif
 
 #include "LoggingTest.h"
-#include "logger/logger.h"
+#include "logging/logger/logger.h"
 
 namespace
 {

@@ -3,7 +3,7 @@
 
 #include "LoggingTest.h"
 #include "back_trace.h"
-#include "logger/logger.h"
+#include "logging/logger/logger.h"
 
 namespace logging
 {

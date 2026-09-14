@@ -39,8 +39,8 @@
 #include <vector>       // for vector, _Vector_const_iterato
 
 #include "LoggingTest.h"
-#include "common/logging_macros.h"  // for LOGGING_UNUSED
-#include "util/string_util.h"  // for is_float, is_integer, exclude_file_extension, file_extension, strip_basename
+#include "logging/common/logging_macros.h"  // for LOGGING_UNUSED
+#include "logging/util/string_util.h"  // for is_float, is_integer, exclude_file_extension, file_extension, strip_basename
 
 namespace logging
 {

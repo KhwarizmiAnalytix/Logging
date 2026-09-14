@@ -4,7 +4,7 @@
 #include <optional>
 #include <string>
 
-#include "common/logging_export.h"
+#include "logging/common/logging_export.h"
 
 namespace logging::utils
 {

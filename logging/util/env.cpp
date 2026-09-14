@@ -1,4 +1,4 @@
-#include "util/env.h"
+#include "logging/util/env.h"
 
 #include <fmt/format.h>
 
@@ -10,8 +10,8 @@
 #include <mutex>
 #include <shared_mutex>
 
-#include "logger/logger.h"
-#include "util/exception.h"
+#include "logging/logger/logger.h"
+#include "logging/util/exception.h"
 
 namespace logging::utils
 {

@@ -28,8 +28,8 @@
 #include <typeinfo>
 #include <vector>  // for vector
 
-#include "common/logging_export.h"  // for LOGGING_API, LOGGING_VISIBILITY
-#include "common/logging_macros.h"  // LOGGING_FORCE_INLINE
+#include "logging/common/logging_export.h"  // for LOGGING_API, LOGGING_VISIBILITY
+#include "logging/common/logging_macros.h"  // LOGGING_FORCE_INLINE
 
 // =============================================================================
 // ENUM CONVERSION UTILITIES

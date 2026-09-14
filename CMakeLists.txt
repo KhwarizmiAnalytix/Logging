@@ -459,6 +459,17 @@ list(FILTER logging_headers EXCLUDE REGEX ".*/Testing/.*")
 list(FILTER logging_sources EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
 list(FILTER logging_headers EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
 
+# Keep CMake's own generated files (compiler-ID probes, etc.) out of the library target.
+# The glob above is unscoped over the whole source tree, so any build directory configured
+# in-tree — the norm here, and required by Scripts/setup.py's builder_suffix convention,
+# which keeps many named build dirs side by side (build, build_ninja, ...) — has its
+# CompilerIdCXX probe .cpp swept in as a "source". Two or more such build dirs coexisting
+# then each contribute a colliding probe, producing duplicate-symbol link errors. Matching
+# on "/CMakeFiles/" (rather than a build-dir naming convention) catches any build directory
+# name, including custom ones from `-B <name>`.
+list(FILTER logging_sources EXCLUDE REGEX "/CMakeFiles/")
+list(FILTER logging_headers EXCLUDE REGEX "/CMakeFiles/")
+
 # --- Target definition ---
 set(CMAKE_CXX_STANDARD ${LOGGING_CXX_STANDARD})
 
@@ -511,12 +522,14 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/Testing/LoggingTest.h" @ONLY
 )
 
-# Include roots: Library/Logging        → "util/exception.h", "common/logging_export.h"
-# Library/Logging/logger → "logger.h", "back_trace.h", "logger_verbosity_enum.h"
+# Include roots: Library/Logging               → "logging/logging.h", "logging/util/exception.h",
+#                                                  "logging/common/logging_export.h"
+# Library/Logging/logging/logger → "logger.h", "back_trace.h", "logger_verbosity_enum.h"
 target_include_directories(
   Logging
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/logger> $<INSTALL_INTERFACE:include/Logging>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/logging/logger>
+         $<INSTALL_INTERFACE:include/Logging>
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -574,19 +587,7 @@ install(
   DESTINATION include
 )
 install(
-  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/common"
-  DESTINATION include/Logging
-  FILES_MATCHING
-  PATTERN "*.h"
-)
-install(
-  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/logger"
-  DESTINATION include/Logging
-  FILES_MATCHING
-  PATTERN "*.h"
-)
-install(
-  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/util"
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/logging"
   DESTINATION include/Logging
   FILES_MATCHING
   PATTERN "*.h"
