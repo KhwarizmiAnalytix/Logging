@@ -209,6 +209,13 @@ jobs:
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y ninja-build lcov
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install coverage-tool
+        run: pip install "git+https://github.com/KhwarizmiAnalytix/coverage-tool.git"
+
       - name: Configure
         run: >
           cmake -S . -B build -G Ninja
@@ -224,27 +231,17 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
       - name: Collect coverage
-        run: |
-          lcov --capture --directory build --output-file coverage.raw.info \
-            --ignore-errors mismatch,negative,gcov,source
-          lcov --remove coverage.raw.info \
-            '*/ThirdParty/*' '*/Testing/*' '/usr/*' \
-            --ignore-errors unused \
-            --output-file coverage.info
-          lcov --list coverage.info
-
-      - name: Generate HTML report
-        run: genhtml coverage.info --output-directory coverage_html
+        run: coverage-tool --build=build
 
       - name: Upload HTML report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-html
-          path: coverage_html
+          path: build/coverage_report/html
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: coverage.info
+          files: build/coverage_filtered.info
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
