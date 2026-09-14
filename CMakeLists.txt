@@ -270,7 +270,42 @@ elseif(MSVC)
 endif()
 
 # --- Third-party dependencies owned by Logging ---
-set(_tpdir "${CMAKE_SOURCE_DIR}/ThirdParty")
+# Host (XSigma) ThirdParty vs this repo's nested ThirdParty/.
+# glog / loguru / spdlog prefer the nested copies so a host can drop those
+# duplicate submodules. fmt / magic_enum prefer the host copies when present
+# so Core shares one fmt tree. Standalone (CMAKE_SOURCE_DIR == this repo)
+# resolves both to the same nested ThirdParty/.
+set(_logging_own_tp "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty")
+set(_logging_host_tp "${CMAKE_SOURCE_DIR}/ThirdParty")
+
+macro(_logging_tp_root _component _out)
+  set(_logging_prefer_nested FALSE)
+  if("${_component}" STREQUAL "glog"
+     OR "${_component}" STREQUAL "loguru"
+     OR "${_component}" STREQUAL "spdlog")
+    set(_logging_prefer_nested TRUE)
+  endif()
+  set(${_out} "")
+  if(_logging_prefer_nested AND EXISTS "${_logging_own_tp}/${_component}/CMakeLists.txt")
+    set(${_out} "${_logging_own_tp}")
+  elseif(EXISTS "${_logging_host_tp}/${_component}/CMakeLists.txt")
+    set(${_out} "${_logging_host_tp}")
+  elseif(EXISTS "${_logging_own_tp}/${_component}/CMakeLists.txt")
+    set(${_out} "${_logging_own_tp}")
+  else()
+    message(
+      FATAL_ERROR
+      "Logging cannot find ThirdParty/${_component} under "
+      "${_logging_own_tp} or ${_logging_host_tp}"
+    )
+  endif()
+endmacro()
+
+_logging_tp_root(fmt _tp_fmt)
+_logging_tp_root(magic_enum _tp_magic_enum)
+_logging_tp_root(loguru _tp_loguru)
+_logging_tp_root(glog _tp_glog)
+_logging_tp_root(spdlog _tp_spdlog)
 
 set(BUILD_TESTING OFF CACHE BOOL "Disable testing for third-party libraries" FORCE)
 set(BUILD_EXAMPLES OFF CACHE BOOL "Disable examples for third-party libraries" FORCE)
@@ -308,20 +343,20 @@ add_third_party_library(
   LIBRARY_TYPE
   STATIC
   SOURCE_DIR
-  "${_tpdir}/fmt"
+  "${_tp_fmt}/fmt"
   ALIASES
   "fmt::fmt-header-only"
   XSIGMA_TARGETS
   "Fmt::fmt=fmt::fmt-header-only|fmt::fmt|fmt"
   INCLUDE_DIR
-  "${_tpdir}/fmt/include"
+  "${_tp_fmt}/fmt/include"
   AUTO_ADD_TO_DEPENDENCIES
   OFF
 )
 
 # fmt is used by Logging source files directly; Fmt::fmt is not available here (it is created by
 # Core, which is processed after Logging).
-list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tpdir}/fmt/include")
+list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_fmt}/fmt/include")
 if(LOGGING_ENABLE_MAGICENUM)
   set(MAGIC_ENUM_OPT_BUILD_EXAMPLES OFF CACHE BOOL "Disable magic_enum examples" FORCE)
   set(MAGIC_ENUM_OPT_BUILD_TESTS OFF CACHE BOOL "Disable magic_enum tests" FORCE)
@@ -332,15 +367,15 @@ if(LOGGING_ENABLE_MAGICENUM)
     LIBRARY_TYPE
     HEADER_ONLY
     SOURCE_DIR
-    "${_tpdir}/magic_enum"
+    "${_tp_magic_enum}/magic_enum"
     XSIGMA_TARGETS
     "MagicEnum::magic_enum=magic_enum"
     INCLUDE_DIR
-    "${_tpdir}/magic_enum/include"
+    "${_tp_magic_enum}/magic_enum/include"
     AUTO_ADD_TO_DEPENDENCIES
     OFF
   )
-  list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tpdir}/magic_enum/include")
+  list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_magic_enum}/magic_enum/include")
 endif()
 if(LOGGING_BACKEND STREQUAL "LOGURU")
   add_third_party_library(
@@ -348,14 +383,14 @@ if(LOGGING_BACKEND STREQUAL "LOGURU")
     LIBRARY_TYPE
     STATIC
     SOURCE_DIR
-    "${_tpdir}/loguru"
+    "${_tp_loguru}/loguru"
     FILTER_FLAGS
     "-flto=thin"
     "-flto=full"
     XSIGMA_TARGETS
     "Loguru::loguru=loguru::loguru|loguru"
     INCLUDE_DIR
-    "${_tpdir}/loguru"
+    "${_tp_loguru}/loguru"
     AUTO_ADD_TO_DEPENDENCIES
     OFF
   )
@@ -365,7 +400,7 @@ if(LOGGING_BACKEND STREQUAL "LOGURU")
       target_compile_options(loguru PRIVATE -Wno-format-truncation)
     endif()
   endif()
-  list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tpdir}/loguru")
+  list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_loguru}/loguru")
 endif()
 if(LOGGING_BACKEND STREQUAL "GLOG")
   add_third_party_library(
@@ -373,18 +408,18 @@ if(LOGGING_BACKEND STREQUAL "GLOG")
     LIBRARY_TYPE
     STATIC
     SOURCE_DIR
-    "${_tpdir}/glog"
+    "${_tp_glog}/glog"
     FILTER_FLAGS
     "-flto=thin"
     "-flto=full"
     XSIGMA_TARGETS
     "Glog::glog=glog::glog|glog"
     INCLUDE_DIR
-    "${_tpdir}/glog/src"
+    "${_tp_glog}/glog/src"
     AUTO_ADD_TO_DEPENDENCIES
     OFF
   )
-  list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tpdir}/glog/src")
+  list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_glog}/glog/src")
 endif()
 if(LOGGING_BACKEND STREQUAL "SPDLOG")
   # spdlog as HEADER_ONLY: add_third_party_library only skips compilation for LIBRARY_TYPE
@@ -394,15 +429,15 @@ if(LOGGING_BACKEND STREQUAL "SPDLOG")
     LIBRARY_TYPE
     HEADER_ONLY
     SOURCE_DIR
-    "${_tpdir}/spdlog"
+    "${_tp_spdlog}/spdlog"
     XSIGMA_TARGETS
     "Spdlog::spdlog=spdlog::spdlog|spdlog"
     INCLUDE_DIR
-    "${_tpdir}/spdlog/include"
+    "${_tp_spdlog}/spdlog/include"
     AUTO_ADD_TO_DEPENDENCIES
     OFF
   )
-  list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tpdir}/spdlog/include")
+  list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_spdlog}/spdlog/include")
 endif()
 
 # --- Source discovery ---
