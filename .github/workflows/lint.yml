@@ -24,7 +24,9 @@ jobs:
           python-version: "3.12"
 
       - name: Install lintrunner and lint-tool
-        run: pip install lintrunner lint-tool
+        # typing_extensions is imported by lint-tool adapters but not declared
+        # as an install_requires on current PyPI lint-tool.
+        run: pip install lintrunner lint-tool typing_extensions
 
       - name: Initialize linters
         run: lintrunner init
