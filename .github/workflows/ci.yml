@@ -138,7 +138,7 @@ jobs:
       - uses: bazelbuild/setup-bazelisk@v3
 
       - name: Cache Bazel
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/bazel
           key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'MODULE.bazel.lock', 'WORKSPACE.bazel', 'BUILD.bazel') }}
