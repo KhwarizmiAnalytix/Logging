@@ -206,12 +206,12 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
   # ---------------------------------------------------------------------------
-  # Coverage: gcc/gcov+lcov (Linux), AppleClang/LLVM (macOS), MSVC/OpenCppCoverage
-  # (Windows) — coverage-tool auto-detects the compiler from CMAKE_CXX_COMPILER_ID
-  # and dispatches to the matching backend (see Cmake/coverage.cmake, which wires
-  # up flags for all three the same way). Codecov upload stays Linux/lcov-only:
-  # that's the one canonical number tracked externally; the other platforms exist
-  # to prove the instrumented build + report pipeline works there too.
+  # Coverage: gcc/gcov+lcov (Linux), Homebrew LLVM/clang (macOS), MSVC/OpenCppCoverage
+  # (Windows). Pass --compiler explicitly: macOS's default /usr/bin/c++ is AppleClang
+  # with CMAKE_CXX_COMPILER=/usr/bin/c++, and coverage-tool cannot map that path
+  # (no "clang" in the filename) when CMAKE_CXX_COMPILER_ID is not a cache entry.
+  # Homebrew llvm also keeps llvm-cov matched to the compiler that instrumented
+  # the binaries. Codecov upload stays Linux/lcov-only.
   # ---------------------------------------------------------------------------
   coverage:
     name: Coverage / ${{ matrix.os }}
@@ -237,7 +237,10 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           brew install ninja llvm
-          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+          LLVM_PREFIX="$(brew --prefix llvm)"
+          echo "${LLVM_PREFIX}/bin" >> "$GITHUB_PATH"
+          echo "CC=${LLVM_PREFIX}/bin/clang" >> "$GITHUB_ENV"
+          echo "CXX=${LLVM_PREFIX}/bin/clang++" >> "$GITHUB_ENV"
 
       - name: Install tools (Windows)
         if: matrix.os == 'windows-latest'
@@ -284,7 +287,9 @@ jobs:
         run: ctest --test-dir build --build-config Release --output-on-failure
 
       - name: Collect coverage
-        run: coverage-tool --build=build
+        run: >
+          coverage-tool --build=build
+          --compiler=${{ matrix.os == 'windows-latest' && 'msvc' || (matrix.os == 'macos-latest' && 'clang' || 'gcc') }}
 
       - name: Upload HTML report
         uses: actions/upload-artifact@v4
