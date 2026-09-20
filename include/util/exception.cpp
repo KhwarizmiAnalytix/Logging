@@ -1,4 +1,4 @@
-#include "logging/util/exception.h"
+#include "include/util/exception.h"
 
 #include <atomic>
 #include <cstdlib>  // for getenv
@@ -9,8 +9,8 @@
 #include <utility>
 
 #include "back_trace.h"
-#include "logging/logger/logger.h"
-#include "logging/util/string_util.h"
+#include "include/logger/logger.h"
+#include "include/util/string_util.h"
 
 namespace logging
 {

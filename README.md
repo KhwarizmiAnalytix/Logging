@@ -14,9 +14,9 @@ Standalone CMake package — any C++ project can consume it via `add_subdirector
 
 - `CMakeLists.txt` — `LOGGING_BACKEND`, `LOGGING_ENABLE_*`.
 - `BUILD.bazel` — `//:Logging`; backend deps from `select`.
-- `logging/logging.h` — umbrella header (`logger.h` + `exception.h`).
-- `logging/logger/` — public logger facade, verbosity enum, back traces.
-- `logging/util/` — exceptions, env helpers, string utilities, lazy values.
+- `include/logging.h` — umbrella header (`logger.h` + `exception.h`).
+- `include/logger/` — public logger facade, verbosity enum, back traces.
+- `include/util/` — exceptions, env helpers, string utilities, lazy values.
 - `Testing/Cxx/` — unit tests and `BenchmarkLogger.cpp` (built only standalone).
 - `ThirdParty/` — vendored nested submodules (fmt, loguru, glog, spdlog, magic_enum,
   googletest, benchmark), pinned to the same commits XSigma uses.
@@ -85,7 +85,7 @@ repo's `WORKSPACE.bazel` doesn't declare (the CMake build disables gflags via
 ## Public API (abridged)
 
 ```cpp
-#include "logging/logging.h"
+#include "include/logging.h"
 
 logging::logger::init();
 logging::logger::set_stderr_verbosity(logging::logger_verbosity_enum::VERBOSITY_INFO);

@@ -522,13 +522,13 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/Testing/LoggingTest.h" @ONLY
 )
 
-# Include roots: Library/Logging               → "logging/logging.h", "logging/util/exception.h",
-#                                                  "logging/common/logging_export.h"
-# Library/Logging/logging/logger → "logger.h", "back_trace.h", "logger_verbosity_enum.h"
+# Include roots: Library/Logging               → "include/logging.h", "include/util/exception.h",
+#                                                  "include/common/logging_export.h"
+# Library/Logging/include/logger → "logger.h", "back_trace.h", "logger_verbosity_enum.h"
 target_include_directories(
   Logging
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/logging/logger>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/logger>
          $<INSTALL_INTERFACE:include/Logging>
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -587,7 +587,7 @@ install(
   DESTINATION include
 )
 install(
-  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/logging"
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include"
   DESTINATION include/Logging
   FILES_MATCHING
   PATTERN "*.h"

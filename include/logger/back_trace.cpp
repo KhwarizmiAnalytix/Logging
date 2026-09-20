@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-#include "logging/util/string_util.h"
+#include "include/util/string_util.h"
 
 // Platform-specific includes
 

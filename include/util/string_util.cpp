@@ -16,9 +16,9 @@
  * @date 2024
  */
 
-#include "logging/util/string_util.h"
+#include "include/util/string_util.h"
 
-#include "logging/common/logging_macros.h"
+#include "include/common/logging_macros.h"
 
 // The project's single formatting-backend dependency. Confined to this file
 // on purpose: see strings::vformat() below.
@@ -42,7 +42,7 @@
 #include <string>  // for char_traits, string, operator<<, allocator, operator==, oper...
 #include <string_view>
 
-#include "logging/util/exception.h"  // for LOGGING_CHECK_DEBUG, LOGGING_CHECK, LOGGING_CHECK_VALUE
+#include "include/util/exception.h"  // for LOGGING_CHECK_DEBUG, LOGGING_CHECK, LOGGING_CHECK_VALUE
 
 // =============================================================================
 // PLATFORM-SPECIFIC CONFIGURATION

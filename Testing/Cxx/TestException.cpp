@@ -24,7 +24,7 @@
 #include <vector>
 
 #include "LoggingTest.h"
-#include "logging/util/exception.h"
+#include "include/util/exception.h"
 
 using namespace logging;
 

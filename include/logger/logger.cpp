@@ -1,4 +1,4 @@
-#include "logging/logger/logger.h"
+#include "include/logger/logger.h"
 
 #include <fmt/format.h>
 
@@ -27,7 +27,7 @@
 #include <windows.h>
 #endif
 
-#include "logging/common/logging_macros.h"
+#include "include/common/logging_macros.h"
 #include "logger_verbosity_enum.h"
 
 #if LOGGING_HAS_LOGURU
