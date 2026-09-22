@@ -106,6 +106,17 @@ TEST(Exception, basic_functionality)
     ASSERT_ANY_THROW({ LOGGING_CHECK(false, "LOGGING_CHECK: Should throw"); });
     ASSERT_ANY_THROW({ LOGGING_THROW("LOGGING_THROW: should throw"); });
 
+    // LOGGING_CHECK_IF_NOT_ON_CUDA/LOGGING_CHECK_DEBUG_IF_NOT_ON_CUDA expand to
+    // plain LOGGING_CHECK/LOGGING_CHECK_DEBUG outside of __CUDACC__/__HIPCC__
+    // (see TestExceptionCudaGuard.cpp for the device-compiler-elided path).
+#ifndef NDEBUG
+    ASSERT_ANY_THROW(
+        { LOGGING_CHECK_DEBUG_IF_NOT_ON_CUDA(false, "LOGGING_CHECK_DEBUG_IF_NOT_ON_CUDA"); });
+#endif
+    ASSERT_ANY_THROW({ LOGGING_CHECK_IF_NOT_ON_CUDA(false, "LOGGING_CHECK_IF_NOT_ON_CUDA"); });
+    LOGGING_CHECK_IF_NOT_ON_CUDA(true, "should not throw");
+    LOGGING_CHECK_DEBUG_IF_NOT_ON_CUDA(true, "should not throw");
+
     // Test NOT_IMPLEMENTED category using macro
     try
     {
