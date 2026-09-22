@@ -287,8 +287,7 @@ TEST(Exception, chaining_and_context)
     // Test exception chaining
     // Create a nested exception using new/shared_ptr to avoid MSVC ICE
     logging::source_location            inner_loc{__func__, __FILE__, __LINE__};
-    std::shared_ptr<logging::exception> inner(new logging::exception(
-        inner_loc,
+    std::shared_ptr<logging::exception> inner(new logging::exception(inner_loc,
         "Inner error: database connection failed",
         logging::exception_category::RUNTIME_ERROR));
 
@@ -309,8 +308,7 @@ TEST(Exception, chaining_and_context)
     // Test context accumulation
     try
     {
-        auto e = logging::exception(
-            logging::source_location{__func__, __FILE__, __LINE__},
+        auto e = logging::exception(logging::source_location{__func__, __FILE__, __LINE__},
             "Base error",
             logging::exception_category::GENERIC);
 
@@ -555,9 +553,8 @@ TEST(Exception, init_exception_mode_from_env)
     }
 
     ASSERT_EQ(success_count.load(), 10);
-    ASSERT_TRUE(
-        logging::get_exception_mode() == logging::exception_mode::THROW ||
-        logging::get_exception_mode() == logging::exception_mode::LOG_FATAL);
+    ASSERT_TRUE(logging::get_exception_mode() == logging::exception_mode::THROW ||
+                logging::get_exception_mode() == logging::exception_mode::LOG_FATAL);
 }
 
 TEST(Exception, log_fatal_mode_aborts)
