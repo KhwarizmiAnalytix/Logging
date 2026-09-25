@@ -6,6 +6,7 @@
 #include "include/common/logging_export.h"
 #include "include/common/logging_macros.h"
 #include "include/logging/level.h"
+#include "include/logging/record.h"
 #include "include/util/string_util.h"
 
 // Deprecated: backward compatibility during transition from logger_verbosity_enum

@@ -7,8 +7,8 @@
 #include <string_view>
 #include <variant>
 
-#include "logging/level.h"
-#include "logging/source_location.h"
+#include "include/logging/level.h"
+#include "include/logging/source_location.h"
 
 namespace logging {
 
