@@ -292,7 +292,11 @@ void native_log_output(
 
     for (const auto& entry : callbacks_copy)
     {
-        entry.callback(entry.user_data, payload);
+        CallbackReentrancyGuard guard;
+        if (!guard.is_reentrant())
+        {
+            entry.callback(entry.user_data, payload);
+        }
     }
 
     abort_if_fatal(severity);
@@ -381,7 +385,11 @@ void native_flush()
 
     for (auto& [cb, user_data] : callbacks_to_invoke)
     {
-        cb(user_data);
+        CallbackReentrancyGuard guard;
+        if (!guard.is_reentrant())
+        {
+            cb(user_data);
+        }
     }
 }
 
@@ -423,7 +431,11 @@ bool native_remove_callback(const char* id)
 
     if (on_close != nullptr)
     {
-        on_close(user_data);
+        CallbackReentrancyGuard guard;
+        if (!guard.is_reentrant())
+        {
+            on_close(user_data);
+        }
     }
     return true;
 }
@@ -632,8 +644,6 @@ logger::log_scope_raii::~log_scope_raii() noexcept
     {
         return;
     }
-    try
-    {
 #if LOGGING_HAS_SPDLOG
         const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now() - internals_->entry_time)
@@ -660,11 +670,6 @@ logger::log_scope_raii::~log_scope_raii() noexcept
             static_cast<unsigned>(internals_->lineno),
             ("[scope exit] " + internals_->scope_message).c_str());
 #endif
-    }
-    catch (const std::exception&)
-    {
-        // Suppress exceptions in destructor
-    }
 }
 
 //=============================================================================
@@ -760,7 +765,23 @@ logger_verbosity_enum logger::internal_verbosity_level_    = logger_verbosity_en
 namespace
 {
 thread_local bool g_in_user_callback = false;
-}
+
+// RAII guard to set/clear reentrancy flag safely
+class CallbackReentrancyGuard
+{
+public:
+    CallbackReentrancyGuard() : was_in_callback_(g_in_user_callback)
+    {
+        g_in_user_callback = true;
+    }
+    ~CallbackReentrancyGuard() { g_in_user_callback = was_in_callback_; }
+
+    bool is_reentrant() const { return was_in_callback_; }
+
+private:
+    bool was_in_callback_;
+};
+}  // namespace
 
 logger::logger() = default;
 
@@ -1302,7 +1323,11 @@ bool logger::remove_callback(const char* id)
 
     if (on_close != nullptr)
     {
-        on_close(user_data);
+        CallbackReentrancyGuard guard;
+        if (!guard.is_reentrant())
+        {
+            on_close(user_data);
+        }
     }
     return true;
 #elif LOGGING_HAS_NATIVE

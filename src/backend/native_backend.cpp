@@ -144,14 +144,8 @@ void ensure_parent_directory(const char* path)
         return;
     }
 
-    try
-    {
-        std::filesystem::create_directories(dir);
-    }
-    catch (const std::exception&)
-    {
-        // Ignore directory creation failures
-    }
+    std::filesystem::create_directories(dir);
+
 }
 
 void abort_if_fatal(int verbosity_int)
