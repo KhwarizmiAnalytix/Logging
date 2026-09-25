@@ -447,6 +447,7 @@ set(logging_headers
   include/logging/level.h
   include/logging/logger.h
   include/logging/logging.h
+  include/logging/backend.h
   include/logging/exception.h
   include/logging/string_util.h
   include/logging/back_trace.h
@@ -475,6 +476,12 @@ set(logging_sources
   include/util/exception.cpp
   include/util/string_util.cpp
   include/util/env.cpp
+  # Backend implementations (Phase A-C refactoring)
+  src/backend/native_backend.cpp
+  src/backend/spdlog_backend.cpp
+  src/backend/loguru_backend.cpp
+  src/backend/glog_backend.cpp
+  src/backend/factory.cpp
 )
 
 # --- Target definition ---
