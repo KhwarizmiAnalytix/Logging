@@ -6,75 +6,83 @@
 
 #include <gtest/gtest.h>
 
-#include "level.h"
+#include "include/logger/logger_verbosity_enum.h"
 
-// Pins the library-owned severity ordering and the single should_log()/is_fatal()
-// gate that every macro and template routes through. The conventional ordering is
-// "larger value == more severe", so at a given threshold every equal-or-more-severe
-// message is emitted and every less-severe message is dropped. A regression that
-// flips the comparison (as an earlier revision did) would fail here immediately.
+// Pins the Loguru-numbered severity ordering and the single should_log()/is_fatal()
+// gate that every macro routes through. Loguru numbering is inverted from the
+// conventional ordering: "smaller (more negative) value == more severe", so at a
+// given threshold every equal-or-more-severe message is emitted and every less
+// severe message is dropped. A regression that flips the comparison direction
+// would fail here immediately.
 
 using logging::is_fatal;
-using logging::level;
+using logging::logger_verbosity_enum;
 using logging::should_log;
 
 TEST(SeveritySemantics, Ordering)
 {
-    EXPECT_LT(static_cast<int>(level::trace), static_cast<int>(level::debug));
-    EXPECT_LT(static_cast<int>(level::debug), static_cast<int>(level::info));
-    EXPECT_LT(static_cast<int>(level::info), static_cast<int>(level::warn));
-    EXPECT_LT(static_cast<int>(level::warn), static_cast<int>(level::error));
-    EXPECT_LT(static_cast<int>(level::error), static_cast<int>(level::critical));
-    EXPECT_LT(static_cast<int>(level::critical), static_cast<int>(level::off));
+    EXPECT_LT(static_cast<int>(logger_verbosity_enum::VERBOSITY_OFF),
+        static_cast<int>(logger_verbosity_enum::VERBOSITY_FATAL));
+    EXPECT_LT(static_cast<int>(logger_verbosity_enum::VERBOSITY_FATAL),
+        static_cast<int>(logger_verbosity_enum::VERBOSITY_ERROR));
+    EXPECT_LT(static_cast<int>(logger_verbosity_enum::VERBOSITY_ERROR),
+        static_cast<int>(logger_verbosity_enum::VERBOSITY_WARNING));
+    EXPECT_LT(static_cast<int>(logger_verbosity_enum::VERBOSITY_WARNING),
+        static_cast<int>(logger_verbosity_enum::VERBOSITY_INFO));
+    EXPECT_LT(static_cast<int>(logger_verbosity_enum::VERBOSITY_INFO),
+        static_cast<int>(logger_verbosity_enum::VERBOSITY_TRACE));
 }
 
 TEST(SeveritySemantics, InfoThreshold)
 {
-    // The exact truth table the reviewer called out: at an info threshold,
-    // warn/error/critical pass and debug/trace are dropped.
-    EXPECT_FALSE(should_log(level::trace, level::info));
-    EXPECT_FALSE(should_log(level::debug, level::info));
-    EXPECT_TRUE(should_log(level::info, level::info));
-    EXPECT_TRUE(should_log(level::warn, level::info));
-    EXPECT_TRUE(should_log(level::error, level::info));
-    EXPECT_TRUE(should_log(level::critical, level::info));
+    // At an info threshold, fatal/error/warning/info pass and trace is dropped.
+    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_INFO));
+    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_INFO));
+    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_WARNING, logger_verbosity_enum::VERBOSITY_INFO));
+    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_ERROR, logger_verbosity_enum::VERBOSITY_INFO));
+    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_INFO));
 }
 
 TEST(SeveritySemantics, TraceThresholdPassesEverything)
 {
-    EXPECT_TRUE(should_log(level::trace, level::trace));
-    EXPECT_TRUE(should_log(level::debug, level::trace));
-    EXPECT_TRUE(should_log(level::critical, level::trace));
+    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_TRACE));
+    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_TRACE));
+    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_TRACE));
 }
 
-TEST(SeveritySemantics, ErrorThresholdDropsWarnAndBelow)
+TEST(SeveritySemantics, ErrorThresholdDropsWarningAndBelow)
 {
-    EXPECT_FALSE(should_log(level::info, level::error));
-    EXPECT_FALSE(should_log(level::warn, level::error));
-    EXPECT_TRUE(should_log(level::error, level::error));
-    EXPECT_TRUE(should_log(level::critical, level::error));
+    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_ERROR));
+    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_ERROR));
+    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_WARNING, logger_verbosity_enum::VERBOSITY_ERROR));
+    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_ERROR, logger_verbosity_enum::VERBOSITY_ERROR));
+    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_ERROR));
 }
 
 TEST(SeveritySemantics, OffThresholdDropsEverything)
 {
-    // off is a sentinel meaning "emit nothing"; even critical is filtered by the
-    // gate itself. Callers keep critical alive via the separate is_fatal() bypass.
-    EXPECT_FALSE(should_log(level::trace, level::off));
-    EXPECT_FALSE(should_log(level::info, level::off));
-    EXPECT_FALSE(should_log(level::critical, level::off));
+    // off is a sentinel meaning "emit nothing"; even fatal is filtered by the
+    // gate itself. Callers keep fatal alive via the separate is_fatal() bypass.
+    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_OFF));
+    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_OFF));
+    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_OFF));
 }
 
 TEST(SeveritySemantics, FatalBypassesFiltering)
 {
-    // Fatal/critical must survive any threshold, including off, because macros
-    // OR is_fatal() with should_log() before emitting.
-    EXPECT_TRUE(is_fatal(level::critical));
-    EXPECT_FALSE(is_fatal(level::error));
-    EXPECT_FALSE(is_fatal(level::info));
+    // Fatal must survive any threshold, including off, because macros OR
+    // is_fatal() with should_log() before emitting.
+    EXPECT_TRUE(is_fatal(logger_verbosity_enum::VERBOSITY_FATAL));
+    EXPECT_FALSE(is_fatal(logger_verbosity_enum::VERBOSITY_ERROR));
+    EXPECT_FALSE(is_fatal(logger_verbosity_enum::VERBOSITY_INFO));
 
-    for (level threshold : {level::trace, level::info, level::error, level::off})
+    for (logger_verbosity_enum threshold : {logger_verbosity_enum::VERBOSITY_TRACE,
+             logger_verbosity_enum::VERBOSITY_INFO,
+             logger_verbosity_enum::VERBOSITY_ERROR,
+             logger_verbosity_enum::VERBOSITY_OFF})
     {
-        EXPECT_TRUE(is_fatal(level::critical) || should_log(level::critical, threshold))
-            << "critical was filtered at threshold " << static_cast<int>(threshold);
+        EXPECT_TRUE(is_fatal(logger_verbosity_enum::VERBOSITY_FATAL) ||
+            should_log(logger_verbosity_enum::VERBOSITY_FATAL, threshold))
+            << "fatal was filtered at threshold " << static_cast<int>(threshold);
     }
 }

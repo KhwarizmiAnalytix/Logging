@@ -1,8 +1,8 @@
 
-#ifndef LOGGING_CONFIG_H
-#define LOGGING_CONFIG_H
+#ifndef LOGGING_LOGGER_CONFIG_H
+#define LOGGING_LOGGER_CONFIG_H
 
-#include "include/logging/level.h"
+#include "logger_verbosity_enum.h"
 
 namespace logging {
 
@@ -14,11 +14,11 @@ namespace logging {
  *
  * Usage:
  *   logging::config cfg{
- *       .level = logging::level::info,
+ *       .level = logging::logger_verbosity_enum::VERBOSITY_INFO,
  *       .console = true,
  *       .signals = {.enabled = false, .sigsegv = false, ...}
  *   };
- *   logging::logger::initialize(cfg);
+ *   logging::logger::init(cfg);
  */
 
 struct signal_config {
@@ -35,9 +35,9 @@ struct signal_config {
 struct config {
     /**
      * Base log level - messages more severe than this are always logged.
-     * Default: level::info (conservative, doesn't spam with debug/trace).
+     * Default: VERBOSITY_INFO (conservative, doesn't spam with debug/trace).
      */
-    level level = logging::level::info;
+    logger_verbosity_enum level = logger_verbosity_enum::VERBOSITY_INFO;
 
     /**
      * Enable console (stderr) output.
@@ -59,4 +59,4 @@ struct config {
 };
 
 }  // namespace logging
-#endif  // LOGGING_CONFIG_H
+#endif  // LOGGING_LOGGER_CONFIG_H

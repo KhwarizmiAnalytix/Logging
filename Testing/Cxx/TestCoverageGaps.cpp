@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "include/logger/logger.h"
-#include "include/logging/structured.h"
+#include "include/logger/structured.h"
 #include "include/util/exception.h"
 
 // Coverage gap tests — structured logging (0% → full)

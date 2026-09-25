@@ -443,38 +443,31 @@ endif()
 # --- Explicit source and header lists (Phase B: replacing glob pattern) ---
 # Headers: Public API and internal headers
 set(logging_headers
-  # Public headers - new location (Phase A-C)
-  include/logging/level.h
-  include/logging/logger.h
-  include/logging/logging.h
-  include/logging/backend.h
-  include/logging/source_location.h
-  include/logging/log.h
-  include/logging/log_typed.h
-  include/logging/log_record.h
-  include/logging/config.h
-  include/logging/structured.h
-  include/logging/perf.h
-  include/logging/exception.h
-  include/logging/string_util.h
-  include/logging/back_trace.h
-  include/logging/env.h
-  include/logging/lazy.h
-  include/logging/backend_traits.h
+  # Public headers - the single logging API
+  include/logger/logger.h
+  include/logger/logger_verbosity_enum.h
+  include/logger/config.h
+  include/logger/structured.h
+  include/logger/back_trace.h
+  include/util/exception.h
+  include/util/string_util.h
+  include/util/env.h
+  include/util/lazy.h
 
   # Public headers - common utilities
   include/common/logging_export.h
   include/common/logging_macros.h
   include/common/logging_pointer.h
 
-  # Public headers - old locations (backward compat during Phase A)
-  include/logger/logger.h
-  include/logger/logger_verbosity_enum.h
-  include/logger/back_trace.h
-  include/util/exception.h
-  include/util/string_util.h
-  include/util/env.h
-  include/util/lazy.h
+  # Backend implementation headers (private, but listed so IDEs index them).
+  # Exactly one concrete backend type is selected at compile time in backend.h.
+  src/backend/backend.h
+  src/backend/backend_types.h
+  src/backend/backend_shared.h
+  src/backend/loguru_backend.h
+  src/backend/native_backend.h
+  src/backend/spdlog_backend.h
+  src/backend/glog_backend.h
 )
 
 # Sources: Implementation files (only non-test, non-vendor files)
@@ -548,17 +541,15 @@ configure_file(
 
 # Include roots:
 # Build interface (source tree):
-# - include/logging/: Primary API - #include <logging/level.h>, #include <logging/logger.h>
-# - include/logger: Backward compat - #include <logger.h>, #include <back_trace.h>
-# - Repository root: Old includes - #include "include/logger/logger.h" (deprecated)
+# - include/logger/: The single logging API - #include "include/logger/logger.h"
+# - Repository root: also usable directly, e.g. #include "logger_verbosity_enum.h"
+#   from within include/logger/ itself, and "src/backend/*.h" internally.
 # Install interface (installed headers):
-# - include/logging/: Primary API maintained after install
+# - include/logger/: API maintained after install
 target_include_directories(
   Logging
-  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/logging>
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/logger>
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/logger>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-         $<INSTALL_INTERFACE:include/logging>
          $<INSTALL_INTERFACE:include/logger>
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )

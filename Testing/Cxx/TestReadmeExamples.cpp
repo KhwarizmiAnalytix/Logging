@@ -1,10 +1,8 @@
 #include <gtest/gtest.h>
 
-#include "level.h"
-#include "config.h"
-#include "structured.h"
-#include "backend_traits.h"
+#include "include/logger/config.h"
 #include "include/logger/logger.h"
+#include "include/logger/structured.h"
 
 // Test: README API Examples Compile
 // This test validates that code examples from README.md can be compiled.
@@ -18,61 +16,43 @@ TEST(ReadmeExamples, HeadersCompile)
     EXPECT_TRUE(true);
 }
 
-// Test 2: Modern logging::level enum exists and is usable
-TEST(ReadmeExamples, LevelEnumExists)
+// Test 2: logger_verbosity_enum exists and is usable
+TEST(ReadmeExamples, VerbosityEnumExists)
 {
-    logging::level lv = logging::level::info;
-    EXPECT_EQ(static_cast<int>(lv), 2);
+    logging::logger_verbosity_enum lv = logging::logger_verbosity_enum::VERBOSITY_INFO;
+    EXPECT_EQ(static_cast<int>(lv), 0);
 
-    lv = logging::level::warn;
-    EXPECT_EQ(static_cast<int>(lv), 3);
+    lv = logging::logger_verbosity_enum::VERBOSITY_WARNING;
+    EXPECT_EQ(static_cast<int>(lv), -1);
 
-    lv = logging::level::error;
-    EXPECT_EQ(static_cast<int>(lv), 4);
+    lv = logging::logger_verbosity_enum::VERBOSITY_ERROR;
+    EXPECT_EQ(static_cast<int>(lv), -2);
 }
 
 // Test 3: Config object can be created
 TEST(ReadmeExamples, ConfigStructure)
 {
     logging::config cfg{
-        .level   = logging::level::info,
+        .level   = logging::logger_verbosity_enum::VERBOSITY_INFO,
         .console = true
     };
 
-    EXPECT_EQ(cfg.level, logging::level::info);
+    EXPECT_EQ(cfg.level, logging::logger_verbosity_enum::VERBOSITY_INFO);
     EXPECT_TRUE(cfg.console);
 }
 
-// Test 4: Backend traits can be queried
-TEST(ReadmeExamples, BackendCapabilities)
-{
-    // Backend traits provide explicit capability declarations
-    bool has_callbacks = logging::backend_traits::active_traits::supports_callbacks;
-    bool has_file_sink = logging::backend_traits::active_traits::supports_file_sink;
-
-    // These should return boolean values without crashing
-    EXPECT_TRUE(has_file_sink || !has_file_sink);
-}
-
-// Test 5: Structured events can be created (header-only verification)
+// Test 4: Structured events can be created (header-only verification)
 TEST(ReadmeExamples, StructuredEventStructure)
 {
-    // Structured events provide semantic logging with key-value pairs
-    // Usage pattern: logging::structured_event("event_name").add("key", value).log<level>();
-
-    EXPECT_TRUE(true);  // Compilation success is the test
+    // Structured events provide semantic logging with key-value pairs.
+    // Usage pattern: logging::structured_event("event_name").add("key", value).info();
+    logging::structured_event event("readme_example");
+    event.add("key", "value");
+    EXPECT_EQ(event.name(), "readme_example");
 }
 
-// Test 6: Legacy logger_verbosity_enum still available
-TEST(ReadmeExamples, BackwardCompatibility)
-{
-    // Verify the deprecated enum is still accessible
-    logging::logger_verbosity_enum verbosity = logging::logger_verbosity_enum::VERBOSITY_INFO;
-    EXPECT_EQ(static_cast<int>(verbosity), 0);
-}
-
-// Test 7: Legacy Message struct (from logger/logger.h)
-TEST(ReadmeExamples, LegacyMessageStructure)
+// Test 5: Legacy Message struct (from logger/logger.h)
+TEST(ReadmeExamples, MessageStructure)
 {
     logging::logger::Message msg;
     msg.verbosity = logging::logger_verbosity_enum::VERBOSITY_INFO;

@@ -13,7 +13,6 @@ filegroup(
             "include/common/*.h",
             "include/util/*.h",
             "include/logger/*.h",
-            "include/logging/*.h",
             "src/backend/*.h",
         ],
         allow_empty = True,
@@ -51,10 +50,10 @@ cc_library(
     # No "." in includes: the package is the workspace root, so Bazel's default
     # -iquote <workspace_root> already resolves "include/common/..." and "include/util/..."
     # headers (includes = ["."] is rejected at the workspace root by Bazel 8+).
-    # "include/logger" and "include/logging" stay: sources include bare headers from both.
+    # "include/logger" stays: sources include its headers by bare name (e.g.
+    # "logger_verbosity_enum.h" from within include/logger/logger.h itself).
     includes = [
         "include/logger",
-        "include/logging",
     ],
     linkopts = logging_linkopts() + select({
         "@platforms//os:windows": ["dbghelp.lib"],

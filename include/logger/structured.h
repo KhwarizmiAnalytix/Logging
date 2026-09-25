@@ -1,12 +1,11 @@
 
-#ifndef LOGGING_STRUCTURED_H
-#define LOGGING_STRUCTURED_H
+#ifndef LOGGING_LOGGER_STRUCTURED_H
+#define LOGGING_LOGGER_STRUCTURED_H
 
 #include <map>
 #include <string>
-#include <vector>
 
-#include "include/logging/level.h"
+#include "logger_verbosity_enum.h"
 
 namespace logging {
 
@@ -22,7 +21,7 @@ namespace logging {
  *   event.add("amount", 99.99);
  *   event.add("currency", "USD");
  *   event.add("status", "success");
- *   event.log<level::info>();
+ *   event.log<logging::logger_verbosity_enum::VERBOSITY_INFO>();
  *
  * Or with builder pattern:
  *   logging::structured_event("api_request")
@@ -30,7 +29,7 @@ namespace logging {
  *       .add("path", "/api/users")
  *       .add("status_code", 201)
  *       .add("latency_ms", 42)
- *       .log<level::info>();
+ *       .info();
  *
  * Backends that support structured logging (native with JSON output)
  * will emit these as JSON objects. Others format as key=value strings.
@@ -79,31 +78,31 @@ public:
     }
 
     // Log the event with specified severity
-    template <level Level>
+    template <logger_verbosity_enum Severity>
     void log(const char* fname = __builtin_FILE(), unsigned line = __builtin_LINE()) const
     {
-        emit_structured(Level, fname, line);
+        emit_structured(Severity, fname, line);
     }
 
     // Convenience methods for common levels
     void info(const char* fname = __builtin_FILE(), unsigned line = __builtin_LINE()) const
     {
-        log<level::info>(fname, line);
+        log<logger_verbosity_enum::VERBOSITY_INFO>(fname, line);
     }
 
     void warn(const char* fname = __builtin_FILE(), unsigned line = __builtin_LINE()) const
     {
-        log<level::warn>(fname, line);
+        log<logger_verbosity_enum::VERBOSITY_WARNING>(fname, line);
     }
 
     void error(const char* fname = __builtin_FILE(), unsigned line = __builtin_LINE()) const
     {
-        log<level::error>(fname, line);
+        log<logger_verbosity_enum::VERBOSITY_ERROR>(fname, line);
     }
 
     void debug(const char* fname = __builtin_FILE(), unsigned line = __builtin_LINE()) const
     {
-        log<level::debug>(fname, line);
+        log<logger_verbosity_enum::VERBOSITY_TRACE>(fname, line);
     }
 
     // Access fields
@@ -116,7 +115,7 @@ private:
     std::string message_;
     std::map<std::string, std::string> fields_;
 
-    void emit_structured(level lv, const char* fname, unsigned line) const;
+    void emit_structured(logger_verbosity_enum lv, const char* fname, unsigned line) const;
 };
 
 /**
@@ -138,4 +137,4 @@ std::string to_json(const structured_event& event);
 std::string to_kvpairs(const structured_event& event);
 
 }  // namespace logging
-#endif  // LOGGING_STRUCTURED_H
+#endif  // LOGGING_LOGGER_STRUCTURED_H

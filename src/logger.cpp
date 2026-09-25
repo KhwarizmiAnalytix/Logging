@@ -1,9 +1,8 @@
 #include "include/logger/logger.h"
 
-#include "include/logging/backend.h"
-#include "include/logging/config.h"
-#include "include/logging/level.h"
-#include "include/logging/structured.h"
+#include "include/logger/config.h"
+#include "include/logger/structured.h"
+#include "src/backend/backend.h"
 
 #include <fmt/format.h>
 
@@ -23,8 +22,9 @@
 #include "logger_verbosity_enum.h"
 
 // This translation unit is now a thin facade. Backend selection and all
-// per-call I/O live behind backend::active_backend() (see include/logging/
-// backend.h and src/backend/*.cpp); there is no per-backend #if here.
+// per-call I/O live behind backend::active_backend() (see src/backend/
+// backend.h and src/backend/*_backend.h); the ONLY compile-time backend
+// branch is the type alias in backend.h.
 
 namespace logging
 {
@@ -56,7 +56,7 @@ char g_main_thread_name[128] = {};
 
 // Named-scope stack: each entry owns the backend scope token, so popping it
 // runs the backend's scope-exit action. Kept per-thread.
-thread_local std::vector<std::pair<std::string, std::unique_ptr<backend::scope_state>>>
+thread_local std::vector<std::pair<std::string, std::unique_ptr<backend::ActiveBackend::Scope>>>
     g_named_scopes;
 }  // namespace
 
@@ -188,7 +188,7 @@ bool logger::is_enabled()
 class logger::log_scope_raii::ls_internals
 {
 public:
-    std::unique_ptr<backend::scope_state> state;
+    std::unique_ptr<backend::ActiveBackend::Scope> state;
 };
 
 logger::log_scope_raii::log_scope_raii()                                             = default;
@@ -313,7 +313,7 @@ void logger::init()
 
 void logger::init(const logging::config& cfg)
 {
-    set_stderr_verbosity(static_cast<logger_verbosity_enum>(static_cast<int>(cfg.level)));
+    set_stderr_verbosity(cfg.level);
     set_console_mode(cfg.console);
 
     if (cfg.signals.enabled)
@@ -404,7 +404,7 @@ logger_verbosity_enum logger::convert_to_verbosity(const char* text)
 //=============================================================================
 // Structured logging
 //=============================================================================
-void structured_event::emit_structured(level lv, const char* fname, unsigned line) const
+void structured_event::emit_structured(logger_verbosity_enum lv, const char* fname, unsigned line) const
 {
     std::string output = fmt::format("event={}", name_);
     if (!message_.empty())
@@ -422,8 +422,7 @@ void structured_event::emit_structured(level lv, const char* fname, unsigned lin
         }
         output += fmt::format(" {}=\"{}\"", key, escaped_value);
     }
-    logger::log(
-        static_cast<logger_verbosity_enum>(static_cast<int>(lv)), fname, line, output.c_str());
+    logger::log(lv, fname, line, output.c_str());
 }
 
 std::string to_json(const structured_event& event)
