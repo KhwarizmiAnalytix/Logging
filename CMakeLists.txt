@@ -485,12 +485,13 @@ set(logging_sources
   src/exception.cpp
   src/string_util.cpp
   src/env.cpp
-  # Backend implementations (Phase A-C refactoring)
+  # Backend implementations selected at compile time; reached via
+  # backend::active_backend() (a singleton) instead of per-call #if.
+  src/backend/factory.cpp
   src/backend/native_backend.cpp
   src/backend/spdlog_backend.cpp
   src/backend/loguru_backend.cpp
   src/backend/glog_backend.cpp
-  src/backend/factory.cpp
 )
 
 # --- Target definition ---

@@ -246,8 +246,9 @@ inline field kv(std::string_view key, const char* value)
 #define LOGGING_LOG(verbosity_name, format_string, ...)                                            \
     do                                                                                             \
     {                                                                                              \
-        if (static_cast<int>(logging::level::verbosity_name) <=                                    \
-            static_cast<int>(logging::logger::get_current_verbosity_cutoff()))                     \
+        if (logging::is_fatal(logging::level::verbosity_name) ||                                   \
+            logging::should_log(                                                                   \
+                logging::level::verbosity_name, logging::logger::get_current_verbosity_cutoff()))  \
         {                                                                                          \
             logging::logger::log(logging::level::verbosity_name,                                   \
                 __FILE__,                                                                          \
@@ -265,8 +266,9 @@ inline field kv(std::string_view key, const char* value)
 #define LOGGING_VLOG_IF(level_val, cond, format_string, ...)                                       \
     do                                                                                             \
     {                                                                                              \
-        if ((cond) && static_cast<int>(level_val) <=                                               \
-                          static_cast<int>(logging::logger::get_current_verbosity_cutoff()))       \
+        if ((cond) &&                                                                              \
+            (logging::is_fatal(level_val) ||                                                       \
+                logging::should_log(level_val, logging::logger::get_current_verbosity_cutoff())))  \
         {                                                                                          \
             logging::logger::log(level_val,                                                        \
                 __FILE__,                                                                          \
@@ -278,8 +280,9 @@ inline field kv(std::string_view key, const char* value)
 #define LOGGING_LOG_IF(verbosity_name, cond, format_string, ...)                                   \
     do                                                                                             \
     {                                                                                              \
-        if ((cond) && static_cast<int>(logging::level::verbosity_name) <=                          \
-                          static_cast<int>(logging::logger::get_current_verbosity_cutoff()))       \
+        if ((cond) && (logging::is_fatal(logging::level::verbosity_name) ||                        \
+                          logging::should_log(logging::level::verbosity_name,                      \
+                              logging::logger::get_current_verbosity_cutoff())))                   \
         {                                                                                          \
             logging::logger::log(logging::level::verbosity_name,                                   \
                 __FILE__,                                                                          \
@@ -294,17 +297,16 @@ inline field kv(std::string_view key, const char* value)
 
 #define LOGGING_LOG_SCOPE_FUNCTION(verbosity_name)                                                 \
     auto LOGGINGLOG_ANONYMOUS_VARIABLE(msg_context) =                                              \
-        (static_cast<int>(logging::level::verbosity_name) >                                        \
-            static_cast<int>(logging::logger::get_current_verbosity_cutoff()))                     \
-            ? logging::logger::log_scope_raii()                                                    \
-            : logging::logger::log_scope_raii(logging::level::verbosity_name, __FILE__, __LINE__)
+        logging::should_log(                                                                       \
+            logging::level::verbosity_name, logging::logger::get_current_verbosity_cutoff())       \
+            ? logging::logger::log_scope_raii(logging::level::verbosity_name, __FILE__, __LINE__)  \
+            : logging::logger::log_scope_raii()
 
 #define LOGGING_VLOG_SCOPE_FUNCTION(level_val)                                                     \
     auto LOGGINGLOG_ANONYMOUS_VARIABLE(msg_context) =                                              \
-        (static_cast<int>(level_val) >                                                             \
-            static_cast<int>(logging::logger::get_current_verbosity_cutoff()))                     \
-            ? logging::logger::log_scope_raii()                                                    \
-            : logging::logger::log_scope_raii(level_val, __FILE__, __LINE__)
+        logging::should_log(level_val, logging::logger::get_current_verbosity_cutoff())            \
+            ? logging::logger::log_scope_raii(level_val, __FILE__, __LINE__)                       \
+            : logging::logger::log_scope_raii()
 
 #define LOGGING_LOG_START_SCOPE(verbosity_name, id)                                                \
     logging::logger::start_scope(logging::level::verbosity_name, id, __FILE__, __LINE__)
@@ -330,8 +332,9 @@ inline field kv(std::string_view key, const char* value)
 #define LOGGING_LOG_KV(verbosity_name, message, ...)                                               \
     do                                                                                             \
     {                                                                                              \
-        if (static_cast<int>(logging::level::verbosity_name) <=                                    \
-            static_cast<int>(logging::logger::get_current_verbosity_cutoff()))                     \
+        if (logging::is_fatal(logging::level::verbosity_name) ||                                   \
+            logging::should_log(                                                                   \
+                logging::level::verbosity_name, logging::logger::get_current_verbosity_cutoff()))  \
         {                                                                                          \
             logging::logger::log(logging::level::verbosity_name,                                   \
                 __FILE__,                                                                          \

@@ -6,7 +6,8 @@
 
 #include "include/logging/level.h"
 
-namespace logging {
+namespace logging
+{
 
 /**
  * Performance-optimized logging for hot paths.
@@ -32,23 +33,24 @@ namespace logging {
 
 #include <spdlog/spdlog.h>
 
-namespace detail {
-namespace spdlog_backend {
-spdlog::level::level_enum to_spdlog_msg_level(int verbosity);
+namespace detail
+{
+namespace spdlog_backend
+{
+spdlog::level::level_enum       to_spdlog_msg_level(int verbosity);
 std::shared_ptr<spdlog::logger> g_logger;
-void ensure_logger();
+void                            ensure_logger();
 }  // namespace spdlog_backend
 
 template <typename... Args>
 inline void perf_log_impl(level lv,
-    const char*                       fname,
-    unsigned int                      lineno,
+    const char*                 fname,
+    unsigned int                lineno,
     fmt::format_string<Args...> format,
     Args&&... args)
 {
     spdlog_backend::ensure_logger();
-    spdlog_backend::g_logger->log(
-        spdlog::source_loc{fname, static_cast<int>(lineno), ""},
+    spdlog_backend::g_logger->log(spdlog::source_loc{fname, static_cast<int>(lineno), ""},
         spdlog_backend::to_spdlog_msg_level(static_cast<int>(lv)),
         format,
         std::forward<Args>(args)...);
@@ -58,24 +60,24 @@ inline void perf_log_impl(level lv,
 template <level Level, typename... Args>
 inline void perf_log(fmt::format_string<Args...> format,
     Args&&... args,
-    const char*   fname = __builtin_FILE(),
-    unsigned int  lineno = __builtin_LINE())
+    const char*  fname  = __builtin_FILE(),
+    unsigned int lineno = __builtin_LINE())
 {
-    if (static_cast<int>(Level) <= static_cast<int>(logger::get_current_verbosity_cutoff()))
+    if (is_fatal(Level) || should_log(Level, logger::get_current_verbosity_cutoff()))
     {
-        detail::perf_log_impl(Level, fname, lineno, format,
-            std::forward<Args>(args)...);
+        detail::perf_log_impl(Level, fname, lineno, format, std::forward<Args>(args)...);
     }
 }
 
 #else
 
 // Fallback for non-spdlog backends
-namespace detail {
+namespace detail
+{
 template <typename... Args>
 inline void perf_log_impl(level lv,
-    const char*                       fname,
-    unsigned int                      lineno,
+    const char*                 fname,
+    unsigned int                lineno,
     fmt::format_string<Args...> format,
     Args&&... args)
 {
@@ -87,13 +89,12 @@ inline void perf_log_impl(level lv,
 template <level Level, typename... Args>
 inline void perf_log(fmt::format_string<Args...> format,
     Args&&... args,
-    const char*   fname = __builtin_FILE(),
-    unsigned int  lineno = __builtin_LINE())
+    const char*  fname  = __builtin_FILE(),
+    unsigned int lineno = __builtin_LINE())
 {
-    if (static_cast<int>(Level) <= static_cast<int>(logger::get_current_verbosity_cutoff()))
+    if (is_fatal(Level) || should_log(Level, logger::get_current_verbosity_cutoff()))
     {
-        detail::perf_log_impl(Level, fname, lineno, format,
-            std::forward<Args>(args)...);
+        detail::perf_log_impl(Level, fname, lineno, format, std::forward<Args>(args)...);
     }
 }
 
@@ -103,8 +104,8 @@ inline void perf_log(fmt::format_string<Args...> format,
 template <typename... Args>
 inline void perf_info(fmt::format_string<Args...> format,
     Args&&... args,
-    const char*   fname = __builtin_FILE(),
-    unsigned int  lineno = __builtin_LINE())
+    const char*  fname  = __builtin_FILE(),
+    unsigned int lineno = __builtin_LINE())
 {
     perf_log<level::info>(format, std::forward<Args>(args)..., fname, lineno);
 }
@@ -112,8 +113,8 @@ inline void perf_info(fmt::format_string<Args...> format,
 template <typename... Args>
 inline void perf_warn(fmt::format_string<Args...> format,
     Args&&... args,
-    const char*   fname = __builtin_FILE(),
-    unsigned int  lineno = __builtin_LINE())
+    const char*  fname  = __builtin_FILE(),
+    unsigned int lineno = __builtin_LINE())
 {
     perf_log<level::warn>(format, std::forward<Args>(args)..., fname, lineno);
 }
@@ -121,8 +122,8 @@ inline void perf_warn(fmt::format_string<Args...> format,
 template <typename... Args>
 inline void perf_error(fmt::format_string<Args...> format,
     Args&&... args,
-    const char*   fname = __builtin_FILE(),
-    unsigned int  lineno = __builtin_LINE())
+    const char*  fname  = __builtin_FILE(),
+    unsigned int lineno = __builtin_LINE())
 {
     perf_log<level::error>(format, std::forward<Args>(args)..., fname, lineno);
 }

@@ -1,20 +1,23 @@
 #include "include/logging/backend.h"
 
+#if LOGGING_HAS_NATIVE
+
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstring>
-#include <filesystem>
-#include <fmt/color.h>
-#include <fmt/format.h>
 #include <fstream>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
-#include "include/common/logging_macros.h"
-#include "include/logger/logger.h"
-#include "include/logger/logger_verbosity_enum.h"
-#include "include/logging/level.h"
+#include <fmt/color.h>
+#include <fmt/format.h>
+
+#include "src/backend/backend_shared.h"
 
 namespace logging
 {
@@ -22,55 +25,15 @@ namespace backend
 {
 namespace
 {
+using shared::abort_if_fatal;
+using shared::basename_from_path;
+using shared::CallbackReentrancyGuard;
+using shared::copy_thread_name;
+using shared::ensure_parent_directory;
 
-using logger_verbosity_enum = logging::logger_verbosity_enum;
-
-std::atomic<int>  g_cutoff{static_cast<int>(logger_verbosity_enum::VERBOSITY_INFO)};
-std::mutex        g_io_mutex;
-std::atomic<bool> g_console_mode{true};
-
-const char* basename_from_path(const char* fname)
+const char* verbosity_to_string(logger_verbosity_enum severity)
 {
-    if (fname == nullptr)
-    {
-        return "";
-    }
-    const char* filename = fname;
-    for (const char* p = fname; *p != '\0'; ++p)
-    {
-        if (*p == '/' || *p == '\\')
-        {
-            filename = p + 1;
-        }
-    }
-    return filename;
-}
-
-struct file_sink
-{
-    std::string   path;
-    std::ofstream stream;
-    int           verbosity{static_cast<int>(logger_verbosity_enum::VERBOSITY_INFO)};
-};
-
-std::vector<file_sink> g_files;
-
-struct callback_entry
-{
-    void* callback{nullptr};
-    void* on_close{nullptr};
-    void* on_flush{nullptr};
-    void* user_data{nullptr};
-    int   verbosity{static_cast<int>(logger_verbosity_enum::VERBOSITY_INFO)};
-};
-
-std::unordered_map<std::string, callback_entry> g_callbacks;
-thread_local char                               g_thread_name[128] = {};
-
-const char* level_to_string(int verbosity_int)
-{
-    auto verbosity = static_cast<logger_verbosity_enum>(verbosity_int);
-    switch (verbosity)
+    switch (severity)
     {
     case logger_verbosity_enum::VERBOSITY_FATAL:
         return "FATAL";
@@ -87,10 +50,9 @@ const char* level_to_string(int verbosity_int)
     }
 }
 
-fmt::color get_severity_color(int verbosity_int)
+fmt::color get_severity_color(logger_verbosity_enum severity)
 {
-    auto verbosity = static_cast<logger_verbosity_enum>(verbosity_int);
-    switch (verbosity)
+    switch (severity)
     {
     case logger_verbosity_enum::VERBOSITY_FATAL:
     case logger_verbosity_enum::VERBOSITY_ERROR:
@@ -104,287 +66,359 @@ fmt::color get_severity_color(int verbosity_int)
     }
 }
 
+thread_local char g_thread_name[128] = {};
+
 std::string format_line(
-    const char* fname, unsigned lineno, int verbosity_int, const std::string& message)
+    const char* fname, unsigned line, logger_verbosity_enum severity, const std::string& message)
 {
     const char* thread = g_thread_name;
     if (thread[0] != '\0')
     {
         return fmt::format("[{}] [{}] {}:{} {}",
-            level_to_string(verbosity_int),
+            verbosity_to_string(severity),
             thread,
             basename_from_path(fname),
-            lineno,
+            line,
             message);
     }
-    return fmt::format("[{}] {}:{} {}",
-        level_to_string(verbosity_int),
-        basename_from_path(fname),
-        lineno,
-        message);
+    return fmt::format(
+        "[{}] {}:{} {}", verbosity_to_string(severity), basename_from_path(fname), line, message);
 }
 
-void ensure_parent_directory(const char* path)
+struct file_sink
 {
-    if (path == nullptr)
-    {
-        return;
-    }
+    std::string           path;
+    std::ofstream         stream;
+    logger_verbosity_enum verbosity{logger_verbosity_enum::VERBOSITY_INFO};
+};
 
-    std::string dir(path);
-    size_t      pos = dir.find_last_of("/\\");
-    if (pos == std::string::npos)
-    {
-        return;
-    }
-
-    dir = dir.substr(0, pos);
-    if (dir.empty())
-    {
-        return;
-    }
-
-    std::filesystem::create_directories(dir);
-
-}
-
-void abort_if_fatal(int verbosity_int)
+struct callback_entry
 {
-    if (verbosity_int == static_cast<int>(logger_verbosity_enum::VERBOSITY_FATAL))
-    {
-        std::abort();
-    }
-}
-
-}  // namespace
+    logger::log_handler_callback_t   callback{nullptr};
+    logger::close_handler_callback_t on_close{nullptr};
+    logger::flush_handler_callback_t on_flush{nullptr};
+    void*                            user_data{nullptr};
+    logger_verbosity_enum            verbosity{logger_verbosity_enum::VERBOSITY_INFO};
+};
 
 class NativeBackend : public Backend
 {
 public:
-    void log(int verbosity, const char* fname, unsigned int lineno, const char* message) override;
-    void set_cutoff(int verbosity) override;
-    int  get_cutoff() const override;
-    void log_to_file(const char* path, bool truncate, int verbosity) override;
-    void end_log_to_file(const char* path) override;
-    void set_console_mode(bool enabled) override;
-    bool get_console_mode() const override;
-    void add_callback(const char* id,
-        void*                     log_handler_ptr,
-        void*                     user_data,
-        int                       verbosity,
-        void*                     on_close_ptr = nullptr,
-        void*                     on_flush_ptr = nullptr) override;
-    bool remove_callback(const char* id) override;
-    void flush() override;
-    void shutdown() override;
-    void set_thread_name(std::string_view name) override;
-};
-
-void NativeBackend::log(int verbosity, const char* fname, unsigned int lineno, const char* message)
-{
-    if (message == nullptr ||
-        (message[0] == '\0' &&
-            verbosity != static_cast<int>(logger_verbosity_enum::VERBOSITY_FATAL)))
+    void log(
+        logger_verbosity_enum severity, const char* fname, unsigned line, const char* msg) override
     {
-        return;
-    }
-
-    const int cutoff = g_cutoff.load(std::memory_order_relaxed);
-    if (verbosity > cutoff && verbosity != static_cast<int>(logger_verbosity_enum::VERBOSITY_FATAL))
-    {
-        return;
-    }
-
-    const std::string line = format_line(fname, lineno, verbosity, message);
-
-    logger::Message payload;
-    payload.verbosity = static_cast<logger_verbosity_enum>(verbosity);
-    payload.filename  = basename_from_path(fname);
-    payload.line      = lineno;
-    payload.preamble  = line;
-    payload.message   = message;
-
-    std::vector<callback_entry> callbacks_copy;
-    {
-        const std::scoped_lock guard(g_io_mutex);
-        if (g_console_mode.load(std::memory_order_relaxed) ||
-            verbosity == static_cast<int>(logger_verbosity_enum::VERBOSITY_FATAL))
+        const std::string message = (msg != nullptr) ? msg : "";
+        if (message.empty() && severity != logger_verbosity_enum::VERBOSITY_FATAL)
         {
-            fmt::print(stderr, fg(get_severity_color(verbosity)), "{}\n", line);
+            return;
         }
 
-        for (auto& sink : g_files)
+        const bool fatal         = (severity == logger_verbosity_enum::VERBOSITY_FATAL);
+        const int  stderr_cutoff = cutoff_.load(std::memory_order_relaxed);
+        // Early out only when no destination would accept the record. Each sink
+        // is gated independently below (per-destination cutoff, like loguru's
+        // most-verbose-across-sinks semantics), so a high stderr cutoff must not
+        // starve a more permissive file or callback sink.
+        if (!fatal && static_cast<int>(severity) > effective_cutoff())
         {
-            if (verbosity <= sink.verbosity && sink.stream.is_open())
+            return;
+        }
+
+        const std::string formatted_line = format_line(fname, line, severity, message);
+
+        logger::Message payload;
+        payload.verbosity = severity;
+        payload.filename  = basename_from_path(fname);
+        payload.line      = line;
+        payload.preamble  = formatted_line;
+        payload.message   = message;
+
+        std::vector<callback_entry> callbacks_copy;
+        {
+            const std::scoped_lock guard(io_mutex_);
+            if (fatal || (console_mode_.load(std::memory_order_relaxed) &&
+                             static_cast<int>(severity) <= stderr_cutoff))
             {
-                sink.stream << line << '\n';
+                fmt::print(stderr, fg(get_severity_color(severity)), "{}\n", formatted_line);
+            }
+
+            for (auto& sink : files_)
+            {
+                if (severity <= sink.verbosity && sink.stream.is_open())
+                {
+                    sink.stream << formatted_line << '\n';
+                }
+            }
+
+            callbacks_copy.reserve(callbacks_.size());
+            for (const auto& [id, entry] : callbacks_)
+            {
+                (void)id;
+                if (entry.callback != nullptr && severity <= entry.verbosity)
+                {
+                    callbacks_copy.push_back(entry);
+                }
             }
         }
 
-        callbacks_copy.reserve(g_callbacks.size());
-        for (const auto& [id, entry] : g_callbacks)
+        for (const auto& entry : callbacks_copy)
+        {
+            CallbackReentrancyGuard guard;
+            if (!guard.is_reentrant())
+            {
+                entry.callback(entry.user_data, payload);
+            }
+        }
+
+        abort_if_fatal(severity);
+    }
+
+    logger_verbosity_enum get_cutoff() const override
+    {
+        return static_cast<logger_verbosity_enum>(effective_cutoff());
+    }
+
+    void set_stderr_verbosity(logger_verbosity_enum severity) override
+    {
+        cutoff_.store(static_cast<int>(severity), std::memory_order_relaxed);
+    }
+
+    void set_internal_verbosity(logger_verbosity_enum severity) override
+    {
+        cutoff_.store(static_cast<int>(severity), std::memory_order_relaxed);
+    }
+
+    void set_console_mode(bool enabled) override
+    {
+        console_mode_.store(enabled, std::memory_order_relaxed);
+    }
+
+    bool get_console_mode() const override { return console_mode_.load(std::memory_order_relaxed); }
+
+    void log_to_file(
+        const char* path, logger::file_mode mode, logger_verbosity_enum severity) override
+    {
+        if ((path == nullptr) || *path == '\0')
+        {
+            return;
+        }
+        ensure_parent_directory(path);
+        const std::scoped_lock guard(io_mutex_);
+        for (auto& sink : files_)
+        {
+            if (sink.path == path)
+            {
+                sink.verbosity = severity;
+                return;
+            }
+        }
+        file_sink sink;
+        sink.path            = path;
+        sink.verbosity       = severity;
+        const auto open_mode = (mode == logger::file_mode::append)
+                                   ? (std::ios::out | std::ios::app)
+                                   : (std::ios::out | std::ios::trunc);
+        sink.stream.open(path, open_mode);
+        files_.push_back(std::move(sink));
+    }
+
+    void end_log_to_file(const char* path) override
+    {
+        if (path == nullptr)
+        {
+            return;
+        }
+        const std::scoped_lock guard(io_mutex_);
+        for (auto it = files_.begin(); it != files_.end(); ++it)
+        {
+            if (it->path == path)
+            {
+                if (it->stream.is_open())
+                {
+                    it->stream.flush();
+                    it->stream.close();
+                }
+                files_.erase(it);
+                return;
+            }
+        }
+    }
+
+    void flush() override
+    {
+        std::vector<std::pair<logger::flush_handler_callback_t, void*>> callbacks_to_invoke;
+        {
+            const std::scoped_lock guard(io_mutex_);
+            std::fflush(stderr);
+            for (auto& sink : files_)
+            {
+                if (sink.stream.is_open())
+                {
+                    sink.stream.flush();
+                }
+            }
+            for (auto& [id, entry] : callbacks_)
+            {
+                (void)id;
+                if (entry.on_flush != nullptr)
+                {
+                    callbacks_to_invoke.push_back({entry.on_flush, entry.user_data});
+                }
+            }
+        }
+
+        for (auto& [cb, user_data] : callbacks_to_invoke)
+        {
+            CallbackReentrancyGuard guard;
+            if (!guard.is_reentrant())
+            {
+                cb(user_data);
+            }
+        }
+    }
+
+    void set_thread_name(const std::string& name) override
+    {
+        copy_thread_name(g_thread_name, sizeof(g_thread_name), name);
+    }
+
+    std::string get_thread_name() const override
+    {
+        if (std::strlen(g_thread_name) > 0)
+        {
+            return {g_thread_name};
+        }
+        return {"N/A"};
+    }
+
+    void add_callback(const char*        id,
+        logger::log_handler_callback_t   callback,
+        void*                            user_data,
+        logger_verbosity_enum            severity,
+        logger::close_handler_callback_t on_close,
+        logger::flush_handler_callback_t on_flush) override
+    {
+        if (id == nullptr)
+        {
+            return;
+        }
+        const std::scoped_lock guard(io_mutex_);
+        callbacks_[id] = callback_entry{callback, on_close, on_flush, user_data, severity};
+    }
+
+    bool remove_callback(const char* id) override
+    {
+        if (id == nullptr)
+        {
+            return false;
+        }
+        logger::close_handler_callback_t on_close  = nullptr;
+        void*                            user_data = nullptr;
+        {
+            const std::scoped_lock guard(io_mutex_);
+            auto                   it = callbacks_.find(id);
+            if (it == callbacks_.end())
+            {
+                return false;
+            }
+            on_close  = it->second.on_close;
+            user_data = it->second.user_data;
+            callbacks_.erase(it);
+        }
+
+        if (on_close != nullptr)
+        {
+            CallbackReentrancyGuard guard;
+            if (!guard.is_reentrant())
+            {
+                on_close(user_data);
+            }
+        }
+        return true;
+    }
+
+    std::unique_ptr<scope_state> scope_enter(logger_verbosity_enum severity,
+        const char*                                                fname,
+        unsigned                                                   line,
+        const std::string&                                         msg) override
+    {
+        log(severity, fname, line, ("[scope enter] " + msg).c_str());
+        return std::make_unique<NativeScope>(*this, severity, fname, line, msg);
+    }
+
+    void on_init(int& argc, char* argv[], const init_options& options) override
+    {
+        (void)argc;
+        (void)argv;
+        (void)options;
+    }
+
+private:
+    class NativeScope : public scope_state
+    {
+    public:
+        NativeScope(NativeBackend& owner,
+            logger_verbosity_enum  severity,
+            const char*            fname,
+            unsigned               line,
+            std::string            msg)
+            : owner_(owner), severity_(severity), fname_(fname != nullptr ? fname : ""),
+              line_(line), msg_(std::move(msg)), entry_time_(std::chrono::steady_clock::now())
+        {
+        }
+
+        ~NativeScope() override
+        {
+            const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - entry_time_)
+                                        .count();
+            const std::string text = fmt::format("[scope exit]  {} ({} us)", msg_, elapsed_us);
+            owner_.log(severity_, fname_.c_str(), line_, text.c_str());
+        }
+
+    private:
+        NativeBackend&                        owner_;
+        logger_verbosity_enum                 severity_;
+        std::string                           fname_;
+        unsigned                              line_;
+        std::string                           msg_;
+        std::chrono::steady_clock::time_point entry_time_;
+    };
+
+    // Most-verbose (numerically largest, in loguru numbering) level any active
+    // destination accepts: the stderr cutoff when the console is on, plus every
+    // file and callback sink. Floored at FATAL so fatal records are never gated.
+    int effective_cutoff() const
+    {
+        int cutoff = static_cast<int>(logger_verbosity_enum::VERBOSITY_FATAL);
+        if (console_mode_.load(std::memory_order_relaxed))
+        {
+            cutoff = std::max(cutoff, cutoff_.load(std::memory_order_relaxed));
+        }
+        const std::scoped_lock guard(io_mutex_);
+        for (const auto& sink : files_)
+        {
+            cutoff = std::max(cutoff, static_cast<int>(sink.verbosity));
+        }
+        for (const auto& [id, entry] : callbacks_)
         {
             (void)id;
-            if (entry.callback != nullptr && verbosity <= entry.verbosity)
+            if (entry.callback != nullptr)
             {
-                callbacks_copy.push_back(entry);
+                cutoff = std::max(cutoff, static_cast<int>(entry.verbosity));
             }
         }
+        return cutoff;
     }
 
-    for (const auto& entry : callbacks_copy)
-    {
-        auto callback = reinterpret_cast<void (*)(void*, const logger::Message&)>(entry.callback);
-        callback(entry.user_data, payload);
-    }
+    std::atomic<int>       cutoff_{static_cast<int>(logger_verbosity_enum::VERBOSITY_INFO)};
+    std::atomic<bool>      console_mode_{true};
+    mutable std::mutex     io_mutex_;
+    std::vector<file_sink> files_;
+    std::unordered_map<std::string, callback_entry> callbacks_;
+};
 
-    abort_if_fatal(verbosity);
-}
-
-void NativeBackend::set_cutoff(int verbosity)
-{
-    g_cutoff.store(verbosity, std::memory_order_relaxed);
-}
-
-int NativeBackend::get_cutoff() const
-{
-    return g_cutoff.load(std::memory_order_relaxed);
-}
-
-void NativeBackend::log_to_file(const char* path, bool truncate, int verbosity)
-{
-    if (path == nullptr || *path == '\0')
-    {
-        return;
-    }
-    ensure_parent_directory(path);
-    const std::scoped_lock guard(g_io_mutex);
-    for (auto& sink : g_files)
-    {
-        if (sink.path == path)
-        {
-            sink.verbosity = verbosity;
-            return;
-        }
-    }
-    file_sink sink;
-    sink.path      = path;
-    sink.verbosity = verbosity;
-    const auto open_mode =
-        truncate ? (std::ios::out | std::ios::trunc) : (std::ios::out | std::ios::app);
-    sink.stream.open(path, open_mode);
-    g_files.push_back(std::move(sink));
-}
-
-void NativeBackend::end_log_to_file(const char* path)
-{
-    if (path == nullptr)
-    {
-        return;
-    }
-    const std::scoped_lock guard(g_io_mutex);
-    for (auto it = g_files.begin(); it != g_files.end(); ++it)
-    {
-        if (it->path == path)
-        {
-            if (it->stream.is_open())
-            {
-                it->stream.flush();
-                it->stream.close();
-            }
-            g_files.erase(it);
-            return;
-        }
-    }
-}
-
-void NativeBackend::set_console_mode(bool enabled)
-{
-    g_console_mode.store(enabled, std::memory_order_relaxed);
-}
-
-bool NativeBackend::get_console_mode() const
-{
-    return g_console_mode.load(std::memory_order_relaxed);
-}
-
-void NativeBackend::add_callback(const char* id,
-    void*                                    log_handler_ptr,
-    void*                                    user_data,
-    int                                      verbosity,
-    void*                                    on_close_ptr,
-    void*                                    on_flush_ptr)
-{
-    if (id == nullptr)
-    {
-        return;
-    }
-    const std::scoped_lock guard(g_io_mutex);
-    g_callbacks[id] =
-        callback_entry{log_handler_ptr, on_close_ptr, on_flush_ptr, user_data, verbosity};
-}
-
-bool NativeBackend::remove_callback(const char* id)
-{
-    if (id == nullptr)
-    {
-        return false;
-    }
-    const std::scoped_lock guard(g_io_mutex);
-    auto                   it = g_callbacks.find(id);
-    if (it == g_callbacks.end())
-    {
-        return false;
-    }
-    if (it->second.on_close != nullptr)
-    {
-        auto on_close = reinterpret_cast<void (*)(void*)>(it->second.on_close);
-        on_close(it->second.user_data);
-    }
-    g_callbacks.erase(it);
-    return true;
-}
-
-void NativeBackend::flush()
-{
-    const std::scoped_lock guard(g_io_mutex);
-    std::fflush(stderr);
-    for (auto& sink : g_files)
-    {
-        if (sink.stream.is_open())
-        {
-            sink.stream.flush();
-        }
-    }
-    for (auto& [id, entry] : g_callbacks)
-    {
-        (void)id;
-        if (entry.on_flush != nullptr)
-        {
-            auto on_flush = reinterpret_cast<void (*)(void*)>(entry.on_flush);
-            on_flush(entry.user_data);
-        }
-    }
-}
-
-void NativeBackend::shutdown()
-{
-    {
-        const std::scoped_lock guard(g_io_mutex);
-        g_files.clear();
-        g_callbacks.clear();
-    }
-}
-
-void NativeBackend::set_thread_name(std::string_view name)
-{
-    const size_t copy_size = std::min(name.size(), sizeof(g_thread_name) - 1);
-    if (copy_size > 0)
-    {
-        std::memcpy(g_thread_name, name.data(), copy_size);
-    }
-    g_thread_name[copy_size] = '\0';
-}
+}  // namespace
 
 std::unique_ptr<Backend> create_native_backend()
 {
@@ -393,3 +427,5 @@ std::unique_ptr<Backend> create_native_backend()
 
 }  // namespace backend
 }  // namespace logging
+
+#endif  // LOGGING_HAS_NATIVE
