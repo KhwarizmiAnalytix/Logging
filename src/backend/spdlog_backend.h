@@ -371,11 +371,17 @@ public:
     {
         (void)argc;
         (void)argv;
+        // Deliberately does NOT call set_thread_name(options.main_thread_name)
+        // here. options.main_thread_name is the facade's last-writer-wins
+        // g_main_thread_name, not necessarily the name of the thread calling
+        // init() -- init() can run on any thread (e.g. logger::init(config)
+        // called from a worker), and re-applying a possibly-stale name to
+        // *this* thread's own g_thread_name shadow would silently corrupt it.
+        // A caller that wants a named thread already gets that from calling
+        // set_thread_name() directly on it (config.thread_name + init(cfg)
+        // still works: set_thread_name runs on the same thread, before this).
+        (void)options;
         ensure_logger();
-        if (options.main_thread_name != nullptr && options.main_thread_name[0] != '\0')
-        {
-            set_thread_name(options.main_thread_name);
-        }
         set_console_mode(console_mode_.load(std::memory_order_relaxed));
     }
 

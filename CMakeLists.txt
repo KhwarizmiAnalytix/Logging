@@ -419,7 +419,21 @@ if(LOGGING_BACKEND STREQUAL "GLOG")
     AUTO_ADD_TO_DEPENDENCIES
     OFF
   )
-  list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_glog}/glog/src")
+  # add_third_party_library() tries an external (system) glog first when
+  # XSIGMA_ENABLE_EXTERNAL is ON (the default) -- and this machine's Homebrew
+  # glog is found, since XSigma's helper does a QUIET find_package(glog)
+  # before ever looking at ThirdParty/glog. When that happens, only the
+  # namespaced "glog::glog" target it exports exists; the bare "glog" target
+  # is only defined by our own bundled CMakeLists.txt via add_subdirectory.
+  # Appending our bundled ThirdParty/glog/glog/src unconditionally used to add
+  # a second, stale glog/flags.h to the include path -- one whose GLOG_EXPORT
+  # macro depends on a generate_export_header() output that only exists when
+  # the bundled subdirectory was actually configured. That stale header could
+  # shadow the external package's own (correctly export-macro'd) headers,
+  # breaking the build. Only add it when the bundled copy is the one in use.
+  if(TARGET glog)
+    list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_glog}/glog/src")
+  endif()
 endif()
 if(LOGGING_BACKEND STREQUAL "SPDLOG")
   # spdlog as HEADER_ONLY: add_third_party_library only skips compilation for LIBRARY_TYPE
