@@ -686,7 +686,8 @@ static void pop_named_scope(const char* id)
     logger::log(logger_verbosity_enum::VERBOSITY_ERROR,
         __FILE__,
         __LINE__,
-        fmt::format("Mismatched scope! expected ({}), got ({})", g_scope_stack.back().id, id ? id : "")
+        fmt::format(
+            "Mismatched scope! expected ({}), got ({})", g_scope_stack.back().id, id ? id : "")
             .c_str());
 }
 

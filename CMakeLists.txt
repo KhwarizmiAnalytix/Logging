@@ -440,35 +440,42 @@ if(LOGGING_BACKEND STREQUAL "SPDLOG")
   list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_spdlog}/spdlog/include")
 endif()
 
-# --- Source discovery ---
-set(logging_headers "")
-set(logging_sources "")
+# --- Explicit source and header lists (Phase B: replacing glob pattern) ---
+# Headers: Public API and internal headers
+set(logging_headers
+  # Public headers - new location (Phase A)
+  include/logging/level.h
+  include/logging/logger.h
+  include/logging/logging.h
+  include/logging/exception.h
+  include/logging/string_util.h
+  include/logging/back_trace.h
+  include/logging/env.h
+  include/logging/lazy.h
 
-file(GLOB_RECURSE logging_headers LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
-                                                         "${CMAKE_CURRENT_SOURCE_DIR}/*.hxx"
+  # Public headers - common utilities
+  include/common/logging_export.h
+  include/common/logging_macros.h
+  include/common/logging_pointer.h
+
+  # Public headers - old locations (backward compat during Phase A)
+  include/logger/logger.h
+  include/logger/logger_verbosity_enum.h
+  include/logger/back_trace.h
+  include/util/exception.h
+  include/util/string_util.h
+  include/util/env.h
+  include/util/lazy.h
 )
-file(GLOB_RECURSE logging_sources LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
-# Keep test sources out of the Logging library target.
-list(FILTER logging_sources EXCLUDE REGEX ".*/Testing/.*")
-list(FILTER logging_headers EXCLUDE REGEX ".*/Testing/.*")
-
-# Keep vendored third-party sources (ThirdParty/ nested submodules) out of the library target.
-# Anchored at CMAKE_CURRENT_SOURCE_DIR: when embedded in XSigma the repo lives at
-# XSigma/ThirdParty/Logging, so an unanchored ".*/ThirdParty/.*" would exclude everything.
-list(FILTER logging_sources EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
-list(FILTER logging_headers EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
-
-# Keep CMake's own generated files (compiler-ID probes, etc.) out of the library target.
-# The glob above is unscoped over the whole source tree, so any build directory configured
-# in-tree — the norm here, and required by Scripts/setup.py's builder_suffix convention,
-# which keeps many named build dirs side by side (build, build_ninja, ...) — has its
-# CompilerIdCXX probe .cpp swept in as a "source". Two or more such build dirs coexisting
-# then each contribute a colliding probe, producing duplicate-symbol link errors. Matching
-# on "/CMakeFiles/" (rather than a build-dir naming convention) catches any build directory
-# name, including custom ones from `-B <name>`.
-list(FILTER logging_sources EXCLUDE REGEX "/CMakeFiles/")
-list(FILTER logging_headers EXCLUDE REGEX "/CMakeFiles/")
+# Sources: Implementation files (only non-test, non-vendor files)
+set(logging_sources
+  include/logger/logger.cpp
+  include/logger/back_trace.cpp
+  include/util/exception.cpp
+  include/util/string_util.cpp
+  include/util/env.cpp
+)
 
 # --- Target definition ---
 set(CMAKE_CXX_STANDARD ${LOGGING_CXX_STANDARD})
@@ -522,12 +529,15 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/Testing/LoggingTest.h" @ONLY
 )
 
-# Include roots: Library/Logging               → "include/logging.h", "include/util/exception.h",
-#                                                  "include/common/logging_export.h"
-# Library/Logging/include/logger → "logger.h", "back_trace.h", "logger_verbosity_enum.h"
+# Include roots:
+# - Repository root: allows "include/logger/logger.h", "include/util/exception.h", etc. (backward compat)
+# - include/logging/: allows new "logging/level.h", "logging/logger.h" (Phase B forward)
+# - include/logger: allows bare "logger.h", "back_trace.h" includes
+# Installed: include/Logging (reserved for future use in Phase B)
 target_include_directories(
   Logging
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/logging>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/logger>
          $<INSTALL_INTERFACE:include/Logging>
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}

@@ -14,8 +14,7 @@ namespace logging
  * Value is heap-allocated; this optimizes for the case in which the value is
  * never actually computed.
  */
-template <class T>
-class optimistic_lazy
+template <class T> class optimistic_lazy
 {
 public:
     optimistic_lazy() = default;
@@ -32,8 +31,7 @@ public:
     }
     ~optimistic_lazy() { reset(); }
 
-    template <class Factory>
-    T& ensure(Factory&& factory)
+    template <class Factory> T& ensure(Factory&& factory)
     {
         if (T* value = value_.load(std::memory_order_acquire))
         {
@@ -64,8 +62,7 @@ public:
         if (this != &other)
         {
             reset();
-            value_.store(
-                other.value_.exchange(nullptr, std::memory_order_acquire),
+            value_.store(other.value_.exchange(nullptr, std::memory_order_acquire),
                 std::memory_order_release);
         }
         return *this;
@@ -87,8 +84,7 @@ private:
 /**
  * Interface for a value that is computed on first access.
  */
-template <class T>
-class lazy_value
+template <class T> class lazy_value
 {
 public:
     virtual ~lazy_value() = default;
@@ -100,8 +96,7 @@ public:
  * Convenience thread-safe lazy_value implementation with opportunistic
  * concurrency.
  */
-template <class T>
-class optimistic_lazy_value : public lazy_value<T>
+template <class T> class optimistic_lazy_value : public lazy_value<T>
 {
 public:
     const T& get() const override
@@ -119,8 +114,7 @@ private:
  * Convenience immutable (thus thread-safe) lazy_value implementation for cases
  * in which the value is not actually lazy.
  */
-template <class T>
-class precomputed_lazy_value : public lazy_value<T>
+template <class T> class precomputed_lazy_value : public lazy_value<T>
 {
 public:
     precomputed_lazy_value(T value) : value_(std::move(value)) {}

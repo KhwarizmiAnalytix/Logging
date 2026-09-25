@@ -3,9 +3,9 @@
 #include <memory>
 #include <string>
 
-#include "include/logging/level.h"
 #include "include/common/logging_export.h"
 #include "include/common/logging_macros.h"
+#include "include/logging/level.h"
 #include "include/util/string_util.h"
 
 // Deprecated: backward compatibility during transition from logger_verbosity_enum
@@ -17,13 +17,13 @@ namespace logging
 struct signal_options
 {
     bool install_handlers = false;
-    bool sigabrt = false;
-    bool sigbus = false;
-    bool sigfpe = false;
-    bool sigill = false;
-    bool sigint = false;
-    bool sigsegv = false;
-    bool sigterm = false;
+    bool sigabrt          = false;
+    bool sigbus           = false;
+    bool sigfpe           = false;
+    bool sigill           = false;
+    bool sigint           = false;
+    bool sigsegv          = false;
+    bool sigterm          = false;
 };
 
 class LOGGING_VISIBILITY logger
@@ -40,8 +40,10 @@ public:
      * Set `verbosity_flag` to nullptr to skip command-line parsing.
      * Pass `signal_options` to configure signal handler installation.
      */
-    LOGGING_API static void init(int& argc, char* argv[], const char* verbosity_flag = "-v",
-        const signal_options& sig_opts = signal_options());
+    LOGGING_API static void init(int& argc,
+        char*                         argv[],
+        const char*                   verbosity_flag = "-v",
+        const signal_options&         sig_opts       = signal_options());
     LOGGING_API static void init(const signal_options& sig_opts = signal_options());
 
     LOGGING_API static void set_enable_unsafe_signal_handler(bool enabled);
@@ -99,13 +101,13 @@ public:
      */
     struct Message
     {
-        level             severity{level::info};
-        std::string       filename;
-        unsigned          line{0};
-        std::string       preamble;
-        std::string       indentation;
-        std::string       prefix;
-        std::string       message;
+        level       severity{level::info};
+        std::string filename;
+        unsigned    line{0};
+        std::string preamble;
+        std::string indentation;
+        std::string prefix;
+        std::string message;
 
         // Deprecated: backward compatibility
         logger_verbosity_enum verbosity_deprecated() const
@@ -119,32 +121,39 @@ public:
     using flush_handler_callback_t = void (*)(void* user_data);
 
 #if !defined(__WRAP__)
-    LOGGING_API static void add_callback(const char* id, log_handler_callback_t callback,
-        void* user_data, level lv, close_handler_callback_t on_close = nullptr,
-        flush_handler_callback_t on_flush = nullptr);
-    LOGGING_API static void add_callback(const char* id, log_handler_callback_t callback,
-        void* user_data, logger_verbosity_enum lv, close_handler_callback_t on_close = nullptr,
-        flush_handler_callback_t on_flush = nullptr);
+    LOGGING_API static void add_callback(const char* id,
+        log_handler_callback_t                       callback,
+        void*                                        user_data,
+        level                                        lv,
+        close_handler_callback_t                     on_close = nullptr,
+        flush_handler_callback_t                     on_flush = nullptr);
+    LOGGING_API static void add_callback(const char* id,
+        log_handler_callback_t                       callback,
+        void*                                        user_data,
+        logger_verbosity_enum                        lv,
+        close_handler_callback_t                     on_close = nullptr,
+        flush_handler_callback_t                     on_flush = nullptr);
 #endif
 
     LOGGING_API static bool remove_callback(const char* id);
 
     LOGGING_API static bool is_enabled();
 
-    LOGGING_API static level get_current_verbosity_cutoff();
+    LOGGING_API static level                 get_current_verbosity_cutoff();
     LOGGING_API static logger_verbosity_enum get_current_verbosity_cutoff_deprecated();
 
-    LOGGING_API static level                convert_to_level(int value);
-    LOGGING_API static level                convert_to_level(const char* text);
+    LOGGING_API static level                 convert_to_level(int value);
+    LOGGING_API static level                 convert_to_level(const char* text);
     LOGGING_API static logger_verbosity_enum convert_to_verbosity(int value);
     LOGGING_API static logger_verbosity_enum convert_to_verbosity(const char* text);
 
     LOGGING_API static void log(level lv, const char* fname, unsigned int lineno, const char* txt);
-    LOGGING_API static void log(logger_verbosity_enum lv, const char* fname, unsigned int lineno,
-        const char* txt);
-    LOGGING_API static void start_scope(level lv, const char* id, const char* fname, unsigned int lineno);
-    LOGGING_API static void start_scope(logger_verbosity_enum lv, const char* id, const char* fname,
-        unsigned int lineno);
+    LOGGING_API static void log(
+        logger_verbosity_enum lv, const char* fname, unsigned int lineno, const char* txt);
+    LOGGING_API static void start_scope(
+        level lv, const char* id, const char* fname, unsigned int lineno);
+    LOGGING_API static void start_scope(
+        logger_verbosity_enum lv, const char* id, const char* fname, unsigned int lineno);
     LOGGING_API static void end_scope(const char* id);
 
 #if !defined(__WRAP__)
@@ -154,7 +163,7 @@ public:
         LOGGING_API log_scope_raii();
         LOGGING_API log_scope_raii(level lv, const char* fname, unsigned int lineno);
         LOGGING_API ~log_scope_raii();
-        LOGGING_API         log_scope_raii(log_scope_raii&&) noexcept;
+        LOGGING_API                 log_scope_raii(log_scope_raii&&) noexcept;
         LOGGING_API log_scope_raii& operator=(log_scope_raii&&) noexcept;
 
         log_scope_raii(const log_scope_raii&)            = delete;
@@ -195,7 +204,9 @@ private:
         if (static_cast<int>(logging::level::verbosity_name) <=                                    \
             static_cast<int>(logging::logger::get_current_verbosity_cutoff()))                     \
         {                                                                                          \
-            logging::logger::log(logging::level::verbosity_name, __FILE__, __LINE__,               \
+            logging::logger::log(logging::level::verbosity_name,                                   \
+                __FILE__,                                                                          \
+                __LINE__,                                                                          \
                 logging::strings::format(format_string, ##__VA_ARGS__).c_str());                   \
         }                                                                                          \
     } while (0)
@@ -206,24 +217,28 @@ private:
 #define LOGGING_LOG_DEBUG(format_string, ...)
 #endif
 
-#define LOGGING_VLOG_IF(level_val, cond, format_string, ...)                                      \
+#define LOGGING_VLOG_IF(level_val, cond, format_string, ...)                                       \
     do                                                                                             \
     {                                                                                              \
         if ((cond) && static_cast<int>(level_val) <=                                               \
                           static_cast<int>(logging::logger::get_current_verbosity_cutoff()))       \
         {                                                                                          \
-            logging::logger::log(level_val, __FILE__, __LINE__,                                    \
+            logging::logger::log(level_val,                                                        \
+                __FILE__,                                                                          \
+                __LINE__,                                                                          \
                 logging::strings::format(format_string, ##__VA_ARGS__).c_str());                   \
         }                                                                                          \
     } while (0)
 
-#define LOGGING_LOG_IF(verbosity_name, cond, format_string, ...)                                  \
+#define LOGGING_LOG_IF(verbosity_name, cond, format_string, ...)                                   \
     do                                                                                             \
     {                                                                                              \
         if ((cond) && static_cast<int>(logging::level::verbosity_name) <=                          \
                           static_cast<int>(logging::logger::get_current_verbosity_cutoff()))       \
         {                                                                                          \
-            logging::logger::log(logging::level::verbosity_name, __FILE__, __LINE__,               \
+            logging::logger::log(logging::level::verbosity_name,                                   \
+                __FILE__,                                                                          \
+                __LINE__,                                                                          \
                 logging::strings::format(format_string, ##__VA_ARGS__).c_str());                   \
         }                                                                                          \
     } while (0)
@@ -232,24 +247,24 @@ private:
 #define LOGGINGLOG_CONCAT(s1, s2) LOGGINGLOG_CONCAT_IMPL(s1, s2)
 #define LOGGINGLOG_ANONYMOUS_VARIABLE(x) LOGGINGLOG_CONCAT(x, __LINE__)
 
-#define LOGGING_LOG_SCOPE_FUNCTION(verbosity_name)                                                \
+#define LOGGING_LOG_SCOPE_FUNCTION(verbosity_name)                                                 \
     auto LOGGINGLOG_ANONYMOUS_VARIABLE(msg_context) =                                              \
         (static_cast<int>(logging::level::verbosity_name) >                                        \
             static_cast<int>(logging::logger::get_current_verbosity_cutoff()))                     \
             ? logging::logger::log_scope_raii()                                                    \
             : logging::logger::log_scope_raii(logging::level::verbosity_name, __FILE__, __LINE__)
 
-#define LOGGING_VLOG_SCOPE_FUNCTION(level_val)                                                    \
+#define LOGGING_VLOG_SCOPE_FUNCTION(level_val)                                                     \
     auto LOGGINGLOG_ANONYMOUS_VARIABLE(msg_context) =                                              \
         (static_cast<int>(level_val) >                                                             \
             static_cast<int>(logging::logger::get_current_verbosity_cutoff()))                     \
             ? logging::logger::log_scope_raii()                                                    \
             : logging::logger::log_scope_raii(level_val, __FILE__, __LINE__)
 
-#define LOGGING_LOG_START_SCOPE(verbosity_name, id)                                               \
+#define LOGGING_LOG_START_SCOPE(verbosity_name, id)                                                \
     logging::logger::start_scope(logging::level::verbosity_name, id, __FILE__, __LINE__)
 
-#define LOGGING_VLOG_START_SCOPE(level_val, id)                                                   \
+#define LOGGING_VLOG_START_SCOPE(level_val, id)                                                    \
     logging::logger::start_scope(level_val, id, __FILE__, __LINE__)
 
 #define LOGGING_LOG_END_SCOPE(id) logging::logger::end_scope(id)
@@ -270,10 +285,10 @@ private:
  * Start / stop a log file at the current verbosity cutoff. `file_name` may be
  * a `const char*` or a `std::string`. Does not change stderr verbosity.
  */
-#define START_LOG_TO_FILE(file_name)                                                              \
+#define START_LOG_TO_FILE(file_name)                                                               \
     do                                                                                             \
     {                                                                                              \
-        const std::string _logging_file_path_ = std::string(file_name);                           \
+        const std::string _logging_file_path_ = std::string(file_name);                            \
         if (!_logging_file_path_.empty())                                                          \
         {                                                                                          \
             logging::logger::log_to_file(_logging_file_path_.c_str(),                              \
@@ -282,10 +297,10 @@ private:
         }                                                                                          \
     } while (0)
 
-#define END_LOG_TO_FILE(file_name)                                                                \
+#define END_LOG_TO_FILE(file_name)                                                                 \
     do                                                                                             \
     {                                                                                              \
-        const std::string _logging_file_path_ = std::string(file_name);                           \
+        const std::string _logging_file_path_ = std::string(file_name);                            \
         if (!_logging_file_path_.empty())                                                          \
         {                                                                                          \
             logging::logger::end_log_to_file(_logging_file_path_.c_str());                         \

@@ -4,16 +4,16 @@
  * SPDX-License-Identifier: GPL-3.0-or-later OR Commercial
  */
 
-#include <fcntl.h>
-#include <thread>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
+#include <fcntl.h>
 #include <fstream>
 #include <iterator>
-#include <cstdio>
-#include <string>
-#include <vector>
 #include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
 #if defined(_WIN32)
 #include <io.h>
@@ -22,8 +22,8 @@
 #include <unistd.h>
 #endif
 
-#include <gtest/gtest.h>
 #include "include/logging.h"
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -44,8 +44,8 @@ std::string read_text_file(const std::string& path)
 // Callback counter for tracking invocations
 struct CallbackCounter
 {
-    std::mutex mutex;
-    int count = 0;
+    std::mutex               mutex;
+    int                      count = 0;
     std::vector<std::string> messages;
 
     void handle(const logging::logger::Message& msg)
@@ -67,10 +67,7 @@ void callback_handler(void* user_data, const logging::logger::Message& message)
 class Phase1Regression : public ::testing::Test
 {
 protected:
-    void SetUp() override
-    {
-        logger::init();
-    }
+    void SetUp() override { logger::init(); }
 
     void TearDown() override
     {
@@ -112,7 +109,8 @@ TEST_F(Phase1Regression, LazyEvaluationWhenFiltered)
     logger::set_stderr_verbosity(logger_verbosity_enum::VERBOSITY_ERROR);
 
     bool was_evaluated = false;
-    auto get_value = [&was_evaluated]() {
+    auto get_value     = [&was_evaluated]()
+    {
         was_evaluated = true;
         return 42;
     };
@@ -144,8 +142,8 @@ TEST_F(Phase1Regression, CallbackRemovalCleansUp)
 #else
     CallbackCounter counter;
 
-    logger::add_callback("cleanup-test", callback_handler, &counter,
-                         logger_verbosity_enum::VERBOSITY_INFO);
+    logger::add_callback(
+        "cleanup-test", callback_handler, &counter, logger_verbosity_enum::VERBOSITY_INFO);
 
     LOGGING_LOG_INFO("before-removal");
     logger::flush();
@@ -175,15 +173,15 @@ TEST_F(Phase1Regression, DuplicateFilePathReplaces)
     const std::string path = "test_phase1_duplicate.log";
 
     // Register first file sink
-    logger::log_to_file(path.c_str(), logger::file_mode::truncate,
-                        logger_verbosity_enum::VERBOSITY_INFO);
+    logger::log_to_file(
+        path.c_str(), logger::file_mode::truncate, logger_verbosity_enum::VERBOSITY_INFO);
 
     LOGGING_LOG_INFO("first-write");
     logger::flush();
 
     // Register SECOND file sink with same path (should replace)
-    logger::log_to_file(path.c_str(), logger::file_mode::truncate,
-                        logger_verbosity_enum::VERBOSITY_INFO);
+    logger::log_to_file(
+        path.c_str(), logger::file_mode::truncate, logger_verbosity_enum::VERBOSITY_INFO);
 
     LOGGING_LOG_INFO("second-write");
     logger::flush();
@@ -243,15 +241,16 @@ TEST_F(Phase1Regression, FlushInvokesCallbackFlush)
 #else
     bool flush_hook_called = false;
 
-    auto flush_hook = [](void* user_data) {
+    auto flush_hook = [](void* user_data)
+    {
         auto* flag = static_cast<bool*>(user_data);
-        *flag = true;
+        *flag      = true;
     };
 
     // Add callback with flush hook
     CallbackCounter counter;
-    logger::add_callback("flush-test", callback_handler, &counter,
-                         logger_verbosity_enum::VERBOSITY_INFO);
+    logger::add_callback(
+        "flush-test", callback_handler, &counter, logger_verbosity_enum::VERBOSITY_INFO);
 
     // Note: the current public API doesn't expose setting flush hooks directly.
     // This test is a placeholder for when that interface exists.
@@ -311,8 +310,8 @@ TEST_F(Phase1Regression, OFFCutoffSuppressesMessagesPrePhase3)
     logger::set_stderr_verbosity(logger_verbosity_enum::VERBOSITY_OFF);
 
     CallbackCounter cb_counter;
-    logger::add_callback("off-test", callback_handler, &cb_counter,
-                         logger_verbosity_enum::VERBOSITY_OFF);
+    logger::add_callback(
+        "off-test", callback_handler, &cb_counter, logger_verbosity_enum::VERBOSITY_OFF);
 
     // All messages should be suppressed with OFF cutoff
     LOGGING_LOG_ERROR("error-at-off");
@@ -328,4 +327,3 @@ TEST_F(Phase1Regression, OFFCutoffSuppressesMessagesPrePhase3)
     logger::remove_callback("off-test");
 #endif
 }
-

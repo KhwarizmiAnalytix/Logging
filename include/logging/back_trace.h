@@ -64,86 +64,85 @@ struct backtrace_options
 namespace back_trace
 {
 /**
-     * @brief Capture and format current stack trace as string
-     *
-     * @param frames_to_skip Number of top frames to skip (default: 0)
-     * @param maximum_number_of_frames Maximum frames to capture (default: 64)
-     * @param skip_python_frames Skip Python interpreter frames (default: true)
-     * @return Formatted stack trace string
-     *
-     * **Example Output**:
-     * ```
-     * frame #0: memory::cpu::memory_allocator::allocate + 0x1a2b (0x7fff8a2b in libc.so)
-     * frame #1: logging::logger::log + 0x45 (0x7fff8a45 in Core.dll)
-     * frame #2: main + 0x12 (0x400512 in app.exe)
-     * ```
-     */
-LOGGING_API std::string print(
-    size_t frames_to_skip           = 0,
-    size_t maximum_number_of_frames = 64,
-    bool   skip_python_frames       = true);
+ * @brief Capture and format current stack trace as string
+ *
+ * @param frames_to_skip Number of top frames to skip (default: 0)
+ * @param maximum_number_of_frames Maximum frames to capture (default: 64)
+ * @param skip_python_frames Skip Python interpreter frames (default: true)
+ * @return Formatted stack trace string
+ *
+ * **Example Output**:
+ * ```
+ * frame #0: memory::cpu::memory_allocator::allocate + 0x1a2b (0x7fff8a2b in libc.so)
+ * frame #1: logging::logger::log + 0x45 (0x7fff8a45 in Core.dll)
+ * frame #2: main + 0x12 (0x400512 in app.exe)
+ * ```
+ */
+LOGGING_API std::string print(size_t frames_to_skip           = 0,
+    size_t                           maximum_number_of_frames = 64,
+    bool                             skip_python_frames       = true);
 
 /**
-     * @brief Capture and format stack trace with custom options
-     *
-     * @param options Configuration for trace capture and formatting
-     * @return Formatted stack trace string
-     */
+ * @brief Capture and format stack trace with custom options
+ *
+ * @param options Configuration for trace capture and formatting
+ * @return Formatted stack trace string
+ */
 LOGGING_API std::string print(const backtrace_options& options);
 
 /**
-     * @brief Capture raw stack frames without formatting
-     *
-     * @param options Configuration for trace capture
-     * @return Vector of stack frame information
-     *
-     * **Use Cases**:
-     * - Custom formatting
-     * - Programmatic analysis
-     * - Caching for later formatting
-     */
+ * @brief Capture raw stack frames without formatting
+ *
+ * @param options Configuration for trace capture
+ * @return Vector of stack frame information
+ *
+ * **Use Cases**:
+ * - Custom formatting
+ * - Programmatic analysis
+ * - Caching for later formatting
+ */
 LOGGING_API std::vector<stack_frame> capture(
     const backtrace_options& options = backtrace_options());
 
 /**
-     * @brief Format captured stack frames to string
-     *
-     * @param frames Previously captured stack frames
-     * @param options Formatting options
-     * @return Formatted stack trace string
-     */
+ * @brief Format captured stack frames to string
+ *
+ * @param frames Previously captured stack frames
+ * @param options Formatting options
+ * @return Formatted stack trace string
+ */
 LOGGING_API std::string format(
     const std::vector<stack_frame>& frames, const backtrace_options& options = backtrace_options());
 
 /**
-     * @brief Get compact single-line stack trace (for logging)
-     *
-     * @param max_frames Maximum number of frames (default: 5)
-     * @return Compact trace like "main->foo->bar->baz"
-     *
-     * **Example**: `"main -> allocate_raw -> malloc -> __libc_start_main"`
-     */
+ * @brief Get compact single-line stack trace (for logging)
+ *
+ * @param max_frames Maximum number of frames (default: 5)
+ * @return Compact trace like "main->foo->bar->baz"
+ *
+ * **Example**: `"main -> allocate_raw -> malloc -> __libc_start_main"`
+ */
 LOGGING_API std::string compact(size_t max_frames = 5);
 
 /**
-     * @brief Enable/disable automatic stack trace on errors
-     *
-     * @param enable 1 to enable, 0 to disable
-     *
-     * **Note**: Currently a no-op placeholder for future implementation
-     */
+ * @brief Enable/disable automatic stack trace on errors
+ *
+ * @param enable 1 to enable, 0 to disable
+ *
+ * **Note**: Currently a no-op placeholder for future implementation
+ */
 LOGGING_API void set_stack_trace_on_error(int enable);
 
 /**
-     * @brief Whether exception construction should capture a stack trace
-     */
+ * @brief Whether exception construction should capture a stack trace
+ */
 LOGGING_API bool capture_on_error();
 
 /**
-     * @brief Check if stack trace capture is supported on this platform
-     *
-     * @return true if backtrace is available, false otherwise
-     */
+ * @brief Check if stack trace capture is supported on this platform
+ *
+ * @return true if backtrace is available, false otherwise
+ */
 LOGGING_API bool is_supported();
 };  // namespace back_trace
 }  // namespace logging

@@ -281,4 +281,3 @@ void dispatch_callbacks(const record& rec) {
 4. **Integrate with logger.cpp:** Replace callback dispatch paths
 5. **Run full test suite:** Verify no regressions
 6. **Begin Phase 3:** Fatal termination fix (after Phase 2 callbacks are solid)
-

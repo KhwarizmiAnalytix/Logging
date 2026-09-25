@@ -1,7 +1,7 @@
 # Phase 1: Baseline and Contract Decisions Report
 
-**Date:** 2026-09-25  
-**Revision:** Based on repository revision `78fc37f`  
+**Date:** 2026-09-25
+**Revision:** Based on repository revision `78fc37f`
 **Status:** Baseline data collection in progress
 
 ## Executive Summary
@@ -55,8 +55,8 @@ Phase 1 of the logging library refactoring establishes a reproducible baseline o
 - Spdlog callbacks execute under `dist_sink_mt`/`callback_sink_mt` locks
 - Recursive logging from a callback can deadlock
 
-**Reproduction Status:** Requires subprocess with timeout and coordination barriers  
-**Test File:** `TestPhase1Regression.cpp::Phase1Regression::CallbackRemovalCleansUp`  
+**Reproduction Status:** Requires subprocess with timeout and coordination barriers
+**Test File:** `TestPhase1Regression.cpp::Phase1Regression::CallbackRemovalCleansUp`
 **Intended Behavior (Phase 2):** User code executes outside all internal locks; reentrancy bounds documented
 
 ---
@@ -68,8 +68,8 @@ Phase 1 of the logging library refactoring establishes a reproducible baseline o
 - Raw pointer snapshot is taken, released, then invoked—concurrent removal may free data first
 - No owning handles; removal is not deferred until in-flight operations complete
 
-**Reproduction Status:** Race condition; requires TSan or careful barrier coordination  
-**Test File:** `TestPhase1Regression.cpp` (requires TSan instrumentation)  
+**Reproduction Status:** Race condition; requires TSan or careful barrier coordination
+**Test File:** `TestPhase1Regression.cpp` (requires TSan instrumentation)
 **Intended Behavior (Phase 2):** Registration state held until all snapshots complete; deferred close
 
 ---
@@ -84,9 +84,9 @@ LOGGING_LOG_FATAL("message");  // With cutoff OFF, macro may skip this entirely
 - Macro does not reach `logger::log()`; process continues normally
 - Applications relying on fatal → termination are silently broken
 
-**Reproduction Status:** Subprocess death test with cutoff OFF  
-**Test File:** `TestPhase1Regression.cpp::Phase1Regression::OFFCutoffSuppressesMessagesPrePhase3`  
-**Current Status:** Test documents behavior before Phase 3 correction  
+**Reproduction Status:** Subprocess death test with cutoff OFF
+**Test File:** `TestPhase1Regression.cpp::Phase1Regression::OFFCutoffSuppressesMessagesPrePhase3`
+**Current Status:** Test documents behavior before Phase 3 correction
 **Intended Behavior (Phase 3):** Fatal always terminates, independent of cutoff
 
 ---
@@ -99,9 +99,9 @@ LOGGING_LOG_FATAL("message");  // With cutoff OFF, macro may skip this entirely
 - Cannot route INFO to file/callback while stderr remains silent
 - Glog explicitly ignores file verbosity argument
 
-**Reproduction Status:** Simple logging with separate file/callback cutoff  
-**Test File:** `TestPhase1Regression.cpp::Phase1Regression::PerDestinationCutoffERRORonConsole`  
-**Test Result:** FAIL—file receives only ERROR, not INFO as intended  
+**Reproduction Status:** Simple logging with separate file/callback cutoff
+**Test File:** `TestPhase1Regression.cpp::Phase1Regression::PerDestinationCutoffERRORonConsole`
+**Test Result:** FAIL—file receives only ERROR, not INFO as intended
 **Intended Behavior (Phase 4):** Frontend cutoff = max(all sinks); each sink filtered independently
 
 ---
@@ -114,9 +114,9 @@ LOGGING_LOG_FATAL("message");  // With cutoff OFF, macro may skip this entirely
 - Removal then removes only the latest sink; orphan remains
 - No explicit "replace" contract
 
-**Reproduction Status:** Register twice, remove once, verify orphan  
-**Test File:** `TestPhase1Regression.cpp::Phase1Regression::DuplicateCallbackRegistrationReplaces`  
-**Test Result:** FAIL—both callbacks receive messages (replacement not implemented)  
+**Reproduction Status:** Register twice, remove once, verify orphan
+**Test File:** `TestPhase1Regression.cpp::Phase1Regression::DuplicateCallbackRegistrationReplaces`
+**Test Result:** FAIL—both callbacks receive messages (replacement not implemented)
 **Intended Behavior (Phase 2/4):** Retire old, install new, exactly-once close hook
 
 ---
@@ -128,9 +128,9 @@ LOGGING_LOG_FATAL("message");  // With cutoff OFF, macro may skip this entirely
 - Other threads print that name; emitted output shows wrong producer
 - Thread-local getter returns correct value but output is misleading
 
-**Reproduction Status:** Synchronize two threads with different names; inspect output  
-**Test File:** `TestPhase1Regression.cpp::Phase1Regression::ThreadNameAppearsInOutput`  
-**Test Result:** SKIP (getter-only test; output inspection needed)  
+**Reproduction Status:** Synchronize two threads with different names; inspect output
+**Test File:** `TestPhase1Regression.cpp::Phase1Regression::ThreadNameAppearsInOutput`
+**Test Result:** SKIP (getter-only test; output inspection needed)
 **Intended Behavior (Phase 5):** Capture producer name per record; use it in output, not pattern
 
 ---
@@ -142,9 +142,9 @@ LOGGING_LOG_FATAL("message");  // With cutoff OFF, macro may skip this entirely
 - Formatted and unformatted scope APIs have different bookkeeping
 - Mismatch diagnostics can persist after thread exit
 
-**Reproduction Status:** Call `start_scope_f` then `end_scope`; check state  
-**Test File:** `TestPhase1Regression.cpp::Phase1Regression::MismatchedScopeDoesNotCorrupt`  
-**Test Result:** PASS (no crash; mismatch logged but state survives)  
+**Reproduction Status:** Call `start_scope_f` then `end_scope`; check state
+**Test File:** `TestPhase1Regression.cpp::Phase1Regression::MismatchedScopeDoesNotCorrupt`
+**Test Result:** PASS (no crash; mismatch logged but state survives)
 **Intended Behavior (Phase 5):** Unified entry bookkeeping; thread-local stack cleanup
 
 ---
@@ -156,8 +156,8 @@ LOGGING_LOG_FATAL("message");  // With cutoff OFF, macro may skip this entirely
 - File mode and verbosity arguments are silently ignored
 - Callbacks and custom handling are unsupported
 
-**Reproduction Status:** Call `add_callback`; verify no invocation  
-**Test File:** N/A (backend comparison in design document)  
+**Reproduction Status:** Call `add_callback`; verify no invocation
+**Test File:** N/A (backend comparison in design document)
 **Intended Behavior (Phase 2):** Common callback registry invoked outside glog locks or explicit unsupported status
 
 ---
@@ -197,7 +197,7 @@ Concurrent producers: 1-4 threads
 Time: ~100-1000 µs (I/O dependent)
 ```
 
-**Full Details:** See `BenchmarkLogger.cpp` output in logs  
+**Full Details:** See `BenchmarkLogger.cpp` output in logs
 **Replication:** `cmake ... -DLOGGING_ENABLE_BENCHMARK=ON && ctest -R benchmark`
 
 ---
@@ -222,7 +222,7 @@ Before phases 2+ can implement, these decisions must be documented:
 
 File: `Testing/Cxx/TestPhase1Regression.cpp`
 
-**Status:** Created but most tests SKIP or FAIL under current implementation  
+**Status:** Created but most tests SKIP or FAIL under current implementation
 **Purpose:** Document intended behavior before implementation; placeholder for Phase 1-9 regression validation
 
 **Tests Added:**
