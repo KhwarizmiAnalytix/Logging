@@ -82,8 +82,9 @@ std::string demangle(const char* name)
 
     // Use GCC/Clang ABI demangling function
     // This converts mangled names like "_Z1gv" to readable names like "g()"
-    // Reference: https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/libsupc%2B%2B/cxxabi.h
-    // NOTE: __cxa_demangle returns malloc'd memory that must be freed
+    // Reference:
+    // https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/libsupc%2B%2B/cxxabi.h NOTE:
+    // __cxa_demangle returns malloc'd memory that must be freed
     std::unique_ptr<char, decltype(&std::free)> demangled(
         abi::__cxa_demangle(name, nullptr, 0, &status),  // NOLINT - C API
         &std::free);
@@ -102,7 +103,9 @@ std::string demangle(const char* name)
     // Collapse nested-template closing brackets ("> > >" -> ">>>"). One pass only
     // merges adjacent pairs, so repeat until a pass makes no more replacements to
     // correctly handle arbitrarily deep nesting.
-    while (replace_all(ret, "> >", ">>") > 0) {}
+    while (replace_all(ret, "> >", ">>") > 0)
+    {
+    }
     erase_all_sub_string(ret, SPACE_LIB1);  // Remove libstdc++ internal namespace
 
     return ret;
@@ -139,9 +142,8 @@ size_t replace_all(std::string& s, const char* from, const char* to)
  * @brief Remove all occurrences of a substring from a string
  * @note More efficient than replace_all when replacing with empty string
  * @note Uses iterative approach to handle multiple occurrences
- * @note Marked noexcept for performance in exception-sensitive contexts
  */
-void erase_all_sub_string(std::string& mainStr, std::string_view const& toErase) noexcept
+void erase_all_sub_string(std::string& mainStr, std::string_view const& toErase)
 {
     size_t pos;
 
@@ -241,21 +243,18 @@ int print_fixed(char* buffer, size_t size, int decimals, long double value)
     return std::snprintf(buffer, size, "%.*Lf", decimals, value);
 }
 
-template <typename T, typename = void>
-struct has_floating_to_chars : std::false_type
+template <typename T, typename = void> struct has_floating_to_chars : std::false_type
 {
 };
 
 template <typename T>
-struct has_floating_to_chars<
-    T,
+struct has_floating_to_chars<T,
     std::void_t<decltype(std::to_chars(
         static_cast<char*>(nullptr), static_cast<char*>(nullptr), T{}))>> : std::true_type
 {
 };
 
-template <typename T>
-std::string shortest_round_trip_impl(T value)
+template <typename T> std::string shortest_round_trip_impl(T value)
 {
 #if !LOGGING_PORTABLE_FLOAT_FORMAT
     // Some standard libraries advertise <charconv> support but still omit
@@ -439,12 +438,10 @@ std::string vformat(std::string_view format_str, const std::string* args, size_t
         return std::vformat(
             fs, std::make_format_args(args[0], args[1], args[2], args[3], args[4], args[5]));
     case 7:
-        return std::vformat(
-            fs,
+        return std::vformat(fs,
             std::make_format_args(args[0], args[1], args[2], args[3], args[4], args[5], args[6]));
     case 8:
-        return std::vformat(
-            fs,
+        return std::vformat(fs,
             std::make_format_args(
                 args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]));
     default:

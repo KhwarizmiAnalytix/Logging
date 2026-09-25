@@ -228,8 +228,7 @@ static std::string format_line(
     const char* thread = ThreadName;
     if (thread[0] != '\0')
     {
-        return fmt::format(
-            "[{}] [{}] {}:{} {}",
+        return fmt::format("[{}] [{}] {}:{} {}",
             verbosity_to_string(severity),
             thread,
             basename_from_path(fname),
@@ -377,8 +376,7 @@ void native_flush()
     }
 }
 
-void native_add_callback(
-    const char*                      id,
+void native_add_callback(const char* id,
     logger::log_handler_callback_t   callback,
     void*                            user_data,
     logger_verbosity_enum            verbosity,
@@ -496,8 +494,7 @@ static logger_verbosity_enum from_spdlog_level(spdlog::level::level_enum l)
 
 static void ensure_logger()
 {
-    std::call_once(
-        g_init_flag,
+    std::call_once(g_init_flag,
         []()
         {
             g_dist_sink      = std::make_shared<spdlog::sinks::dist_sink_mt>();
@@ -555,11 +552,10 @@ logger::log_scope_raii::log_scope_raii(log_scope_raii&&) noexcept               
 logger::log_scope_raii& logger::log_scope_raii::operator=(log_scope_raii&&) noexcept = default;
 
 // NOLINTNEXTLINE(modernize-avoid-variadic-functions)
-logger::log_scope_raii::log_scope_raii(
-    logger_verbosity_enum verbosity,
-    const char*           fname,
-    unsigned int          lineno,
-    const char*           format,
+logger::log_scope_raii::log_scope_raii(logger_verbosity_enum verbosity,
+    const char*                                              fname,
+    unsigned int                                             lineno,
+    const char*                                              format,
     ...)
 {
 #if LOGGING_HAS_LOGURU || LOGGING_HAS_GLOG || LOGGING_HAS_NATIVE || LOGGING_HAS_SPDLOG
@@ -595,8 +591,7 @@ logger::log_scope_raii::log_scope_raii(
     internals_->verbosity     = verbosity;
     internals_->entry_time    = std::chrono::steady_clock::now();
     spdlog_backend::ensure_logger();
-    spdlog_backend::g_logger->log(
-        spdlog::source_loc{fname, static_cast<int>(lineno), ""},
+    spdlog_backend::g_logger->log(spdlog::source_loc{fname, static_cast<int>(lineno), ""},
         spdlog_backend::to_spdlog_msg_level(verbosity),
         "[scope enter] {}",
         formatted);
@@ -622,7 +617,7 @@ logger::log_scope_raii::~log_scope_raii()
     }
 #if LOGGING_HAS_SPDLOG
     const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
-                                std::chrono::steady_clock::now() - internals_->entry_time)
+        std::chrono::steady_clock::now() - internals_->entry_time)
                                 .count();
     spdlog_backend::g_logger->log(
         spdlog::source_loc{internals_->fname.c_str(), internals_->lineno, ""},
@@ -632,18 +627,16 @@ logger::log_scope_raii::~log_scope_raii()
         elapsed_us);
 #elif LOGGING_HAS_NATIVE
     const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
-                                std::chrono::steady_clock::now() - internals_->entry_time)
+        std::chrono::steady_clock::now() - internals_->entry_time)
                                 .count();
     const std::string msg =
         fmt::format("[scope exit]  {} ({} us)", internals_->scope_message, elapsed_us);
-    logger::log(
-        internals_->verbosity,
+    logger::log(internals_->verbosity,
         internals_->fname.c_str(),
         static_cast<unsigned>(internals_->lineno),
         msg.c_str());
 #elif LOGGING_HAS_GLOG
-    logger::log(
-        internals_->verbosity,
+    logger::log(internals_->verbosity,
         internals_->fname.c_str(),
         static_cast<unsigned>(internals_->lineno),
         ("[scope exit] " + internals_->scope_message).c_str());
@@ -686,8 +679,7 @@ static void pop_named_scope(const char* id)
     auto& vector = get_vector();
     if (vector.empty())
     {
-        logger::log(
-            logger_verbosity_enum::VERBOSITY_ERROR,
+        logger::log(logger_verbosity_enum::VERBOSITY_ERROR,
             __FILE__,
             __LINE__,
             fmt::format("Mismatched scope! stack empty, got ({})", id ? id : "").c_str());
@@ -702,15 +694,13 @@ static void pop_named_scope(const char* id)
             const std::scoped_lock guard(g_scope_mutex);
             scope_vectors().erase(std::this_thread::get_id());
         }
-        logger::log(
-            finished.verbosity,
+        logger::log(finished.verbosity,
             finished.fname.c_str(),
             finished.lineno,
             fmt::format("[scope exit] {}", finished.id).c_str());
         return;
     }
-    logger::log(
-        logger_verbosity_enum::VERBOSITY_ERROR,
+    logger::log(logger_verbosity_enum::VERBOSITY_ERROR,
         __FILE__,
         __LINE__,
         fmt::format("Mismatched scope! expected ({}), got ({})", vector.back().id, id ? id : "")
@@ -756,8 +746,7 @@ static void loguru_pop_scope(const char* id)
         }
         return;
     }
-    LOG_F(
-        ERROR,
+    LOG_F(ERROR,
         "Mismatched scope! expected (%s), got (%s)",
         vector.back().first.c_str(),
         id ? id : "");
@@ -776,8 +765,7 @@ bool                  logger::enable_sigsegv_handler       = false;
 bool                  logger::enable_sigterm_handler       = false;
 logger_verbosity_enum logger::internal_verbosity_level_    = logger_verbosity_enum::VERBOSITY_INFO;
 
-logger::logger()  = default;
-logger::~logger() = default;
+logger::logger() = default;
 
 void logger::set_enable_unsafe_signal_handler(bool enabled)
 {
@@ -1234,18 +1222,16 @@ void loguru_callback_bridge_flush(void* user_data)
 #endif
 }  // namespace
 
-void logger::add_callback(
-    const char*                      id,
-    logger::log_handler_callback_t   callback,
-    void*                            user_data,
-    logger_verbosity_enum            verbosity,
-    logger::close_handler_callback_t on_close,
-    logger::flush_handler_callback_t on_flush)
+void logger::add_callback(const char* id,
+    logger::log_handler_callback_t    callback,
+    void*                             user_data,
+    logger_verbosity_enum             verbosity,
+    logger::close_handler_callback_t  on_close,
+    logger::flush_handler_callback_t  on_flush)
 {
 #if LOGGING_HAS_LOGURU
     auto* callback_data = new CallbackBridgeData{callback, on_close, on_flush, user_data};
-    loguru::add_callback(
-        id,
+    loguru::add_callback(id,
         loguru_callback_bridge_handler,
         callback_data,
         static_cast<loguru::Verbosity>(verbosity),
@@ -1258,10 +1244,9 @@ void logger::add_callback(
             [callback, user_data](const spdlog::details::log_msg& msg)
             {
                 logger::Message logging_msg;
-                logging_msg.filename = msg.source.filename ? msg.source.filename : "";
-                logging_msg.message  = std::string(msg.payload.data(), msg.payload.size());
-                logging_msg.preamble = fmt::format(
-                    "[{}] {}:{}",
+                logging_msg.filename  = msg.source.filename ? msg.source.filename : "";
+                logging_msg.message   = std::string(msg.payload.data(), msg.payload.size());
+                logging_msg.preamble  = fmt::format("[{}] {}:{}",
                     spdlog::level::to_string_view(msg.level),
                     logging_msg.filename,
                     msg.source.line);
@@ -1411,8 +1396,7 @@ void logger::log(
     internal::native_log_output(fname, lineno, verbosity, text);
 #elif LOGGING_HAS_SPDLOG
     spdlog_backend::ensure_logger();
-    spdlog_backend::g_logger->log(
-        spdlog::source_loc{fname, static_cast<int>(lineno), ""},
+    spdlog_backend::g_logger->log(spdlog::source_loc{fname, static_cast<int>(lineno), ""},
         spdlog_backend::to_spdlog_msg_level(verbosity),
         "{}",
         text);
@@ -1432,11 +1416,10 @@ void logger::log(
 }
 
 // NOLINTNEXTLINE(modernize-avoid-variadic-functions)
-void logger::log_f(
-    logger_verbosity_enum verbosity,
-    const char*           fname,
-    unsigned int          lineno,
-    const char*           format,
+void logger::log_f(logger_verbosity_enum verbosity,
+    const char*                          fname,
+    unsigned int                         lineno,
+    const char*                          format,
     ...)
 {
     va_list vlist;
@@ -1450,8 +1433,7 @@ void logger::start_scope(
     logger_verbosity_enum verbosity, const char* id, const char* fname, unsigned int lineno)
 {
 #if LOGGING_HAS_LOGURU
-    detail::loguru_push_scope(
-        id,
+    detail::loguru_push_scope(id,
         verbosity > logger::get_current_verbosity_cutoff()
             ? std::make_shared<loguru::LogScopeRAII>()
             : std::make_shared<loguru::LogScopeRAII>(
@@ -1473,12 +1455,11 @@ void logger::end_scope(const char* id)
 }
 
 // NOLINTNEXTLINE(modernize-avoid-variadic-functions)
-void logger::start_scope_f(
-    logger_verbosity_enum verbosity,
-    const char*           id,
-    const char*           fname,
-    unsigned int          lineno,
-    const char*           format,
+void logger::start_scope_f(logger_verbosity_enum verbosity,
+    const char*                                  id,
+    const char*                                  fname,
+    unsigned int                                 lineno,
+    const char*                                  format,
     ...)
 {
     va_list vlist;
@@ -1492,8 +1473,7 @@ void logger::start_scope_f(
     }
     else
     {
-        detail::loguru_push_scope(
-            id,
+        detail::loguru_push_scope(id,
             std::make_shared<loguru::LogScopeRAII>(
                 static_cast<loguru::Verbosity>(verbosity), fname, lineno, "%s", formatted.c_str()));
     }
@@ -1530,8 +1510,7 @@ logger_verbosity_enum logger::convert_to_verbosity(const char* text)
     }
 
     std::string upper(text);
-    std::transform(
-        upper.begin(),
+    std::transform(upper.begin(),
         upper.end(),
         upper.begin(),
         [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
