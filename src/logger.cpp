@@ -1,4 +1,6 @@
 #include "include/logger/logger.h"
+#include "include/logging/structured.h"
+#include "include/logging/level.h"
 
 #include <fmt/format.h>
 
@@ -1574,4 +1576,83 @@ logger_verbosity_enum logger::convert_to_verbosity(const char* text)
     }
     return logger_verbosity_enum::VERBOSITY_INVALID;
 }
+
+// ===== Structured Logging Implementation =====
+
+void structured_event::emit_structured(level lv, const char* fname, unsigned line) const
+{
+    // Format as key=value pairs for now (can be extended for JSON)
+    std::string output = fmt::format("event={}", name_);
+    if (!message_.empty())
+    {
+        output += fmt::format(" message=\"{}\"", message_);
+    }
+    for (const auto& [key, value] : fields_)
+    {
+        // Escape quotes in values
+        std::string escaped_value = value;
+        size_t pos = 0;
+        while ((pos = escaped_value.find('"', pos)) != std::string::npos)
+        {
+            escaped_value.replace(pos, 1, "\\\"");
+            pos += 2;
+        }
+        output += fmt::format(" {}=\"{}\"", key, escaped_value);
+    }
+    logger::log(static_cast<logger_verbosity_enum>(static_cast<int>(lv)), fname, line,
+        output.c_str());
+}
+
+std::string to_json(const structured_event& event)
+{
+    std::string json = "{";
+    json += fmt::format("\"event\":\"{}\"", event.name());
+
+    if (!event.message().empty())
+    {
+        json += fmt::format(",\"message\":\"{}\"", event.message());
+    }
+
+    for (const auto& [key, value] : event.fields())
+    {
+        // Try to parse as number
+        char* end;
+        strtod(value.c_str(), &end);
+        bool is_number = (*end == '\0' && !value.empty());
+
+        if (is_number || value == "true" || value == "false")
+        {
+            json += fmt::format(",\"{}\":{}", key, value);
+        }
+        else
+        {
+            // Escape quotes
+            std::string escaped = value;
+            size_t pos = 0;
+            while ((pos = escaped.find('"', pos)) != std::string::npos)
+            {
+                escaped.replace(pos, 1, "\\\"");
+                pos += 2;
+            }
+            json += fmt::format(",\"{}\":\"{}\"", key, escaped);
+        }
+    }
+    json += "}";
+    return json;
+}
+
+std::string to_kvpairs(const structured_event& event)
+{
+    std::string output = fmt::format("event={}", event.name());
+    if (!event.message().empty())
+    {
+        output += fmt::format(" message=\"{}\"", event.message());
+    }
+    for (const auto& [key, value] : event.fields())
+    {
+        output += fmt::format(" {}=\"{}\"", key, value);
+    }
+    return output;
+}
+
 }  // namespace logging

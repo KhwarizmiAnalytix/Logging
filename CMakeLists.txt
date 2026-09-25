@@ -453,6 +453,8 @@ set(logging_headers
   include/logging/log_typed.h
   include/logging/log_record.h
   include/logging/config.h
+  include/logging/structured.h
+  include/logging/perf.h
   include/logging/exception.h
   include/logging/string_util.h
   include/logging/back_trace.h
