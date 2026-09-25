@@ -24,6 +24,10 @@
 
 namespace logging
 {
+
+// Forward declaration (defined in include/logging/config.h)
+struct config;
+
 class LOGGING_VISIBILITY logger
 {
 public:
@@ -43,6 +47,10 @@ public:
      */
     LOGGING_API static void init(int& argc, char* argv[], const char* verbosity_flag = "-v");
     LOGGING_API static void init();
+
+    // Initialize from structured config object (modern preferred API)
+    // Forward declaration - config type defined in include/logging/config.h
+    LOGGING_API static void init(const logging::config& cfg);
 
     LOGGING_API static void set_enable_unsafe_signal_handler(bool enabled);
     LOGGING_API static bool get_enable_unsafe_signal_handler();

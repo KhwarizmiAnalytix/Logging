@@ -1009,6 +1009,36 @@ void logger::init()
     logger::init(argc, argv.data());
 }
 
+// Initialize from config object
+void logger::init(const logging::config& cfg)
+{
+    // Apply configuration settings
+    set_stderr_verbosity(static_cast<logger_verbosity_enum>(static_cast<int>(cfg.level)));
+    set_console_mode(cfg.console);
+
+    // Configure signal handlers if enabled
+    if (cfg.signals.enabled)
+    {
+        set_enable_unsafe_signal_handler(true);
+        enable_sigabrt_handler    = cfg.signals.sigabrt;
+        enable_sigbus_handler     = cfg.signals.sigbus;
+        enable_sigfpe_handler     = cfg.signals.sigfpe;
+        enable_sigill_handler     = cfg.signals.sigill;
+        enable_sigint_handler     = cfg.signals.sigint;
+        enable_sigsegv_handler    = cfg.signals.sigsegv;
+        enable_sigterm_handler    = cfg.signals.sigterm;
+    }
+
+    // Set thread name if provided
+    if (cfg.thread_name)
+    {
+        set_thread_name(cfg.thread_name);
+    }
+
+    // Perform base initialization
+    logger::init();
+}
+
 void logger::set_stderr_verbosity(logger_verbosity_enum level)
 {
     g_requested_stderr_verbosity = level;
