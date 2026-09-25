@@ -3,7 +3,6 @@
 #include <fmt/format.h>
 #include <string_view>
 
-#include "include/logging/dispatcher.h"
 #include "include/logging/source_location.h"
 #include "include/logger/logger_verbosity_enum.h"
 
