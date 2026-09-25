@@ -543,16 +543,19 @@ configure_file(
 )
 
 # Include roots:
-# - Repository root: allows "include/logger/logger.h", "include/util/exception.h", etc. (backward compat)
-# - include/logging/: allows new "logging/level.h", "logging/logger.h" (Phase B forward)
-# - include/logger: allows bare "logger.h", "back_trace.h" includes
-# Installed: include/Logging (reserved for future use in Phase B)
+# Build interface (source tree):
+# - include/logging/: Primary API - #include <logging/level.h>, #include <logging/logger.h>
+# - include/logger: Backward compat - #include <logger.h>, #include <back_trace.h>
+# - Repository root: Old includes - #include "include/logger/logger.h" (deprecated)
+# Install interface (installed headers):
+# - include/logging/: Primary API maintained after install
 target_include_directories(
   Logging
-  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/logging>
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/logging>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/logger>
-         $<INSTALL_INTERFACE:include/Logging>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+         $<INSTALL_INTERFACE:include/logging>
+         $<INSTALL_INTERFACE:include/logger>
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
