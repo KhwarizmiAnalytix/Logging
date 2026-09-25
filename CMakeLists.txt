@@ -474,11 +474,12 @@ set(logging_headers
 
 # Sources: Implementation files (only non-test, non-vendor files)
 set(logging_sources
-  include/logger/logger.cpp
-  include/logger/back_trace.cpp
-  include/util/exception.cpp
-  include/util/string_util.cpp
-  include/util/env.cpp
+  # Core implementation (moved to src/)
+  src/logger.cpp
+  src/back_trace.cpp
+  src/exception.cpp
+  src/string_util.cpp
+  src/env.cpp
   # Backend implementations (Phase A-C refactoring)
   src/backend/native_backend.cpp
   src/backend/spdlog_backend.cpp
