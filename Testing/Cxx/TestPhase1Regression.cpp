@@ -239,10 +239,26 @@ TEST_F(Phase1Regression, DuplicateFilePathReplaces)
     LOGGING_LOG_INFO("second-write");
     logger::flush();
 
-    // File should only contain second-write (truncate mode)
+    // File should contain second-write exactly once, and NOT first-write:
+    // truncate-mode replacement must actually reopen (truncating) the file,
+    // and the old sink/callback/file-handle from the first registration must
+    // be fully unregistered -- not left running alongside the new one (which
+    // would duplicate every subsequent write).
     const std::string contents = read_text_file(path);
-    EXPECT_NE(contents.find("second-write"), std::string::npos);
-    // first-write may or may not be present depending on replacement timing
+    const auto        count_occurrences = [](const std::string& haystack, const std::string& needle)
+    {
+        size_t count = 0;
+        size_t pos   = 0;
+        while ((pos = haystack.find(needle, pos)) != std::string::npos)
+        {
+            ++count;
+            pos += needle.size();
+        }
+        return count;
+    };
+    EXPECT_EQ(count_occurrences(contents, "second-write"), 1U) << "contents: " << contents;
+    EXPECT_EQ(contents.find("first-write"), std::string::npos)
+        << "old registration was not replaced/truncated: " << contents;
 
     logger::end_log_to_file(path.c_str());
 #endif

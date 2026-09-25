@@ -71,15 +71,39 @@ public:
         shared::ensure_parent_directory(path);
         const loguru::FileMode loguru_mode =
             (mode == logger::file_mode::append) ? loguru::Append : loguru::Truncate;
+
+        // loguru::add_file registers the file sink as a callback keyed by
+        // `path` via the *raw* loguru::add_callback -- it does not go through
+        // our add_callback() wrapper's duplicate-id tracking, so a second
+        // log_to_file() call on the same path would accumulate a second open
+        // file handle instead of replacing the first (mirrors the callback
+        // duplicate-id gap fixed in add_callback; paths and callback ids
+        // share the same loguru::s_callbacks id namespace).
+        {
+            const std::scoped_lock guard(ids_mutex_);
+            if (registered_ids_.count(path) != 0)
+            {
+                loguru::remove_callback(path);
+            }
+            else
+            {
+                registered_ids_.insert(path);
+            }
+        }
         loguru::add_file(path, loguru_mode, static_cast<loguru::Verbosity>(severity));
     }
 
     void end_log_to_file(const char* path)
     {
-        if (path != nullptr)
+        if (path == nullptr)
         {
-            loguru::remove_callback(path);
+            return;
         }
+        {
+            const std::scoped_lock guard(ids_mutex_);
+            registered_ids_.erase(path);
+        }
+        loguru::remove_callback(path);
     }
 
     void flush() { loguru::flush(); }

@@ -155,6 +155,18 @@ public:
         file_sink->set_level(to_spdlog_min_level(severity));
         file_sink->set_pattern("[%l] %s:%# %v");
         const std::scoped_lock guard(sinks_mutex_);
+        // Re-registering an already-open path must remove the old sink from
+        // dist_sink_ first: file_sinks_[path] = file_sink below replaces the
+        // map entry either way, but dist_sink_ has its own independent sink
+        // list, and add_sink() alone would leave the old sink registered
+        // there too -- two live file handles open on the same path, both
+        // receiving every subsequent log call (duplicate writes, and the
+        // old handle leaks until process exit).
+        auto it = file_sinks_.find(path);
+        if (it != file_sinks_.end())
+        {
+            dist_sink_->remove_sink(it->second);
+        }
         file_sinks_[path] = file_sink;
         dist_sink_->add_sink(file_sink);
     }

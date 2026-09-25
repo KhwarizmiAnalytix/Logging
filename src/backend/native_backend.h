@@ -169,21 +169,32 @@ public:
             return;
         }
         shared::ensure_parent_directory(path);
+        const auto open_mode = (mode == logger::file_mode::append)
+                                   ? (std::ios::out | std::ios::app)
+                                   : (std::ios::out | std::ios::trunc);
         const std::scoped_lock guard(io_mutex_);
         for (auto& sink : files_)
         {
             if (sink.path == path)
             {
+                // Re-registering an already-open path re-opens it with the
+                // requested mode (so a second truncate call actually
+                // truncates again) instead of silently keeping the old
+                // handle open at its original mode -- matches spdlog/loguru,
+                // which both reopen on a duplicate path.
+                if (sink.stream.is_open())
+                {
+                    sink.stream.flush();
+                    sink.stream.close();
+                }
+                sink.stream.open(path, open_mode);
                 sink.verbosity = severity;
                 return;
             }
         }
         file_sink sink;
-        sink.path            = path;
-        sink.verbosity       = severity;
-        const auto open_mode = (mode == logger::file_mode::append)
-                                   ? (std::ios::out | std::ios::app)
-                                   : (std::ios::out | std::ios::trunc);
+        sink.path      = path;
+        sink.verbosity = severity;
         sink.stream.open(path, open_mode);
         files_.push_back(std::move(sink));
     }
