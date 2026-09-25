@@ -1,3 +1,6 @@
+#ifndef LOGGING_COMMON_LOGGING_POINTER_H
+#define LOGGING_COMMON_LOGGING_POINTER_H
+
 /*
  * Logging library — shared-pointer aliases (standalone; mirrors Core common/pointer.h).
  *
@@ -18,7 +21,6 @@
  * Contact: licensing@xsigma.co.uk
  * Website: https://www.xsigma.co.uk
  */
-#pragma once
 
 #include <memory>
 
@@ -75,3 +77,4 @@ std::unique_ptr<T> make_unique(Args&&... args)
 }
 }  // namespace util
 }  // namespace logging
+#endif  // LOGGING_COMMON_LOGGING_POINTER_H

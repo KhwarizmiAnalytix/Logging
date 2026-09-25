@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_LOG_H
+#define LOGGING_LOG_H
 
 #include <fmt/format.h>
 #include <string_view>
@@ -63,3 +65,4 @@ inline void vlog(logging::logger_verbosity_enum verbosity,
 }
 
 }  // namespace logging
+#endif  // LOGGING_LOG_H

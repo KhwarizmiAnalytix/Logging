@@ -1,7 +1,7 @@
 #include "include/logger/logger.h"
-#include "include/logging/structured.h"
-#include "include/logging/level.h"
 #include "include/logging/config.h"
+#include "include/logging/level.h"
+#include "include/logging/structured.h"
 
 #include <fmt/format.h>
 
@@ -648,30 +648,30 @@ logger::log_scope_raii::~log_scope_raii() noexcept
         return;
     }
 #if LOGGING_HAS_SPDLOG
-        const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now() - internals_->entry_time)
-                                    .count();
-        spdlog_backend::g_logger->log(
-            spdlog::source_loc{internals_->fname.c_str(), internals_->lineno, ""},
-            spdlog_backend::to_spdlog_msg_level(internals_->verbosity),
-            "[scope exit]  {} ({} us)",
-            internals_->scope_message,
-            elapsed_us);
+    const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - internals_->entry_time)
+                                .count();
+    spdlog_backend::g_logger->log(
+        spdlog::source_loc{internals_->fname.c_str(), internals_->lineno, ""},
+        spdlog_backend::to_spdlog_msg_level(internals_->verbosity),
+        "[scope exit]  {} ({} us)",
+        internals_->scope_message,
+        elapsed_us);
 #elif LOGGING_HAS_NATIVE
-        const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now() - internals_->entry_time)
-                                    .count();
-        const std::string msg =
-            fmt::format("[scope exit]  {} ({} us)", internals_->scope_message, elapsed_us);
-        logger::log(internals_->verbosity,
-            internals_->fname.c_str(),
-            static_cast<unsigned>(internals_->lineno),
-            msg.c_str());
+    const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - internals_->entry_time)
+                                .count();
+    const std::string msg =
+        fmt::format("[scope exit]  {} ({} us)", internals_->scope_message, elapsed_us);
+    logger::log(internals_->verbosity,
+        internals_->fname.c_str(),
+        static_cast<unsigned>(internals_->lineno),
+        msg.c_str());
 #elif LOGGING_HAS_GLOG
-        logger::log(internals_->verbosity,
-            internals_->fname.c_str(),
-            static_cast<unsigned>(internals_->lineno),
-            ("[scope exit] " + internals_->scope_message).c_str());
+    logger::log(internals_->verbosity,
+        internals_->fname.c_str(),
+        static_cast<unsigned>(internals_->lineno),
+        ("[scope exit] " + internals_->scope_message).c_str());
 #endif
 }
 
@@ -773,10 +773,7 @@ thread_local bool g_in_user_callback = false;
 class CallbackReentrancyGuard
 {
 public:
-    CallbackReentrancyGuard() : was_in_callback_(g_in_user_callback)
-    {
-        g_in_user_callback = true;
-    }
+    CallbackReentrancyGuard() : was_in_callback_(g_in_user_callback) { g_in_user_callback = true; }
     ~CallbackReentrancyGuard() { g_in_user_callback = was_in_callback_; }
 
     bool is_reentrant() const { return was_in_callback_; }
@@ -1592,7 +1589,7 @@ void structured_event::emit_structured(level lv, const char* fname, unsigned lin
     {
         // Escape quotes in values
         std::string escaped_value = value;
-        size_t pos = 0;
+        size_t      pos           = 0;
         while ((pos = escaped_value.find('"', pos)) != std::string::npos)
         {
             escaped_value.replace(pos, 1, "\\\"");
@@ -1600,8 +1597,8 @@ void structured_event::emit_structured(level lv, const char* fname, unsigned lin
         }
         output += fmt::format(" {}=\"{}\"", key, escaped_value);
     }
-    logger::log(static_cast<logger_verbosity_enum>(static_cast<int>(lv)), fname, line,
-        output.c_str());
+    logger::log(
+        static_cast<logger_verbosity_enum>(static_cast<int>(lv)), fname, line, output.c_str());
 }
 
 std::string to_json(const structured_event& event)
@@ -1629,7 +1626,7 @@ std::string to_json(const structured_event& event)
         {
             // Escape quotes
             std::string escaped = value;
-            size_t pos = 0;
+            size_t      pos     = 0;
             while ((pos = escaped.find('"', pos)) != std::string::npos)
             {
                 escaped.replace(pos, 1, "\\\"");

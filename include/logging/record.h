@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_RECORD_H
+#define LOGGING_RECORD_H
 
 #include <chrono>
 #include <cstdint>
@@ -57,3 +59,4 @@ struct Message {
 };
 
 }  // namespace logging
+#endif  // LOGGING_RECORD_H

@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_LOG_TYPED_H
+#define LOGGING_LOG_TYPED_H
 
 #include <fmt/format.h>
 
@@ -87,3 +89,4 @@ inline void critical(fmt::format_string<Args...> format,
 }
 
 }  // namespace logging
+#endif  // LOGGING_LOG_TYPED_H

@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_CONFIG_H
+#define LOGGING_CONFIG_H
 
 #include "include/logging/level.h"
 
@@ -57,3 +59,4 @@ struct config {
 };
 
 }  // namespace logging
+#endif  // LOGGING_CONFIG_H

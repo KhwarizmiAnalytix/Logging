@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_LOGGER_H
+#define LOGGING_LOGGER_H
 
 #include <memory>
 #include <string>
@@ -112,8 +114,8 @@ public:
 
         // Extended metadata (Phase F)
         std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::now();
-        unsigned long thread_id = 0;
-        std::string thread_name;
+        unsigned long                         thread_id = 0;
+        std::string                           thread_name;
 
         // Deprecated: backward compatibility
         logger_verbosity_enum verbosity_deprecated() const
@@ -371,3 +373,4 @@ inline field kv(std::string_view key, const char* value)
 #define LOG_TO_FILE_NAME(file_name) (std::string(file_name) + ".log")
 #define START_LOG_TO_FILE_NAME(file_name) START_LOG_TO_FILE(LOG_TO_FILE_NAME(file_name))
 #define END_LOG_TO_FILE_NAME(file_name) END_LOG_TO_FILE(LOG_TO_FILE_NAME(file_name))
+#endif  // LOGGING_LOGGER_H

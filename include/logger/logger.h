@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_LOGGER_LOGGER_H
+#define LOGGING_LOGGER_LOGGER_H
 
 #include <memory>
 #include <string>
@@ -313,3 +315,4 @@ private:
 #define LOG_TO_FILE_NAME(file_name) (std::string(file_name) + ".log")
 #define START_LOG_TO_FILE_NAME(file_name) START_LOG_TO_FILE(LOG_TO_FILE_NAME(file_name))
 #define END_LOG_TO_FILE_NAME(file_name) END_LOG_TO_FILE(LOG_TO_FILE_NAME(file_name))
+#endif  // LOGGING_LOGGER_LOGGER_H

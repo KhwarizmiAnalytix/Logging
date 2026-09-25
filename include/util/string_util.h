@@ -1,3 +1,6 @@
+#ifndef LOGGING_UTIL_STRING_UTIL_H
+#define LOGGING_UTIL_STRING_UTIL_H
+
 /**
  * @file string_util.h
  * @brief Comprehensive string utility functions for the XSigma Core library
@@ -11,7 +14,6 @@
  * @date 2024
  */
 
-#pragma once
 
 #include <stdarg.h>  // for va_list
 
@@ -485,3 +487,4 @@ LOGGING_FORCE_INLINE std::string to_lower(std::string_view input)
 }
 }  // namespace strings
 }  // namespace logging
+#endif  // LOGGING_UTIL_STRING_UTIL_H

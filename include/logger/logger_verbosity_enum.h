@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_LOGGER_LOGGER_VERBOSITY_ENUM_H
+#define LOGGING_LOGGER_LOGGER_VERBOSITY_ENUM_H
 
 namespace logging
 {
@@ -15,3 +17,4 @@ enum class logger_verbosity_enum : int
     VERBOSITY_MAX     = +9,
 };
 }  // namespace logging
+#endif  // LOGGING_LOGGER_LOGGER_VERBOSITY_ENUM_H

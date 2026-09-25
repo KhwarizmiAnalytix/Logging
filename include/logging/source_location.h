@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_SOURCE_LOCATION_H
+#define LOGGING_SOURCE_LOCATION_H
 
 #include <cstdint>
 
@@ -22,3 +24,4 @@ struct source_location {
 };
 
 }  // namespace logging
+#endif  // LOGGING_SOURCE_LOCATION_H

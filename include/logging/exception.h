@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_EXCEPTION_H
+#define LOGGING_EXCEPTION_H
 
 #include <algorithm>
 #include <atomic>
@@ -451,3 +453,4 @@ inline std::string format_check_msg(const char* cond_str)
             LOGGING_LOG_WARNING(msg);                                                              \
         }                                                                                          \
     } while (0)
+#endif  // LOGGING_EXCEPTION_H

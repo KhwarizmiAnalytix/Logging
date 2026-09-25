@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_STRUCTURED_H
+#define LOGGING_STRUCTURED_H
 
 #include <map>
 #include <string>
@@ -136,3 +138,4 @@ std::string to_json(const structured_event& event);
 std::string to_kvpairs(const structured_event& event);
 
 }  // namespace logging
+#endif  // LOGGING_STRUCTURED_H

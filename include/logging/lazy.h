@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_LAZY_H
+#define LOGGING_LAZY_H
 
 #include <atomic>
 #include <utility>
@@ -126,3 +128,4 @@ private:
 };
 
 }  // namespace logging
+#endif  // LOGGING_LAZY_H

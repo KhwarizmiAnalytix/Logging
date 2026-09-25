@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_BACKEND_H
+#define LOGGING_BACKEND_H
 
 #include <memory>
 #include <string>
@@ -61,3 +63,4 @@ std::unique_ptr<Backend> create_glog_backend();
 
 }  // namespace backend
 }  // namespace logging
+#endif  // LOGGING_BACKEND_H

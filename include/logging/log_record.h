@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_LOG_RECORD_H
+#define LOGGING_LOG_RECORD_H
 
 #include <chrono>
 #include <string>
@@ -55,3 +57,4 @@ struct LogRecord {
 };
 
 }  // namespace logging
+#endif  // LOGGING_LOG_RECORD_H

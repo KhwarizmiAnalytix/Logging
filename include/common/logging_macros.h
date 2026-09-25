@@ -1,3 +1,6 @@
+#ifndef LOGGING_COMMON_LOGGING_MACROS_H
+#define LOGGING_COMMON_LOGGING_MACROS_H
+
 /*
  * XSigma: High-Performance Computational Library
  *
@@ -17,7 +20,6 @@
  * Website: https://www.xsigma.co.uk
  */
 
-#pragma once
 
 #ifndef LOGGING_PORTABLE_MACROS_INCLUDED_
 #define LOGGING_PORTABLE_MACROS_INCLUDED_
@@ -139,3 +141,4 @@ private:                                     \
 public:
 
 #endif  // LOGGING_PORTABLE_MACROS_INCLUDED_
+#endif  // LOGGING_COMMON_LOGGING_MACROS_H

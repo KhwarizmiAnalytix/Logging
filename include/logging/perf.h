@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_PERF_H
+#define LOGGING_PERF_H
 
 #include <fmt/format.h>
 
@@ -126,3 +128,4 @@ inline void perf_error(fmt::format_string<Args...> format,
 }
 
 }  // namespace logging
+#endif  // LOGGING_PERF_H

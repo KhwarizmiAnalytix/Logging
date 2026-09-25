@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_LEVEL_H
+#define LOGGING_LEVEL_H
 
 namespace logging
 {
@@ -37,3 +39,4 @@ enum class logger_verbosity_enum : int
 }  // namespace deprecated
 
 }  // namespace logging
+#endif  // LOGGING_LEVEL_H

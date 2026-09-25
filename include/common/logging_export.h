@@ -1,7 +1,9 @@
+#ifndef LOGGING_COMMON_LOGGING_EXPORT_H
+#define LOGGING_COMMON_LOGGING_EXPORT_H
+
 /*
  * XSigma Logging library — DLL export/import (same pattern as Parallel).
  */
-#pragma once
 
 #define LOGGING_VISIBILITY_ENUM
 
@@ -39,3 +41,4 @@
 #define LOGGING_IMPORT
 #define LOGGING_HIDDEN
 #endif
+#endif  // LOGGING_COMMON_LOGGING_EXPORT_H
