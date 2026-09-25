@@ -656,28 +656,16 @@ struct named_scope
     unsigned              lineno{0};
 };
 
-static std::mutex                                                     g_scope_mutex;
-static std::unordered_map<std::thread::id, std::vector<named_scope>>& scope_vectors()
-{
-    static std::unordered_map<std::thread::id, std::vector<named_scope>> vectors;
-    return vectors;
-}
-
-static std::vector<named_scope>& get_vector()
-{
-    const std::scoped_lock guard(g_scope_mutex);
-    return scope_vectors()[std::this_thread::get_id()];
-}
+thread_local std::vector<named_scope> g_scope_stack;
 
 static void push_named_scope(named_scope scope)
 {
-    get_vector().push_back(std::move(scope));
+    g_scope_stack.emplace_back(std::move(scope));
 }
 
 static void pop_named_scope(const char* id)
 {
-    auto& vector = get_vector();
-    if (vector.empty())
+    if (g_scope_stack.empty())
     {
         logger::log(logger_verbosity_enum::VERBOSITY_ERROR,
             __FILE__,
@@ -685,15 +673,10 @@ static void pop_named_scope(const char* id)
             fmt::format("Mismatched scope! stack empty, got ({})", id ? id : "").c_str());
         return;
     }
-    if (id != nullptr && vector.back().id == id)
+    if (id != nullptr && g_scope_stack.back().id == id)
     {
-        const named_scope finished = vector.back();
-        vector.pop_back();
-        if (vector.empty())
-        {
-            const std::scoped_lock guard(g_scope_mutex);
-            scope_vectors().erase(std::this_thread::get_id());
-        }
+        const named_scope finished = g_scope_stack.back();
+        g_scope_stack.pop_back();
         logger::log(finished.verbosity,
             finished.fname.c_str(),
             finished.lineno,
@@ -703,52 +686,34 @@ static void pop_named_scope(const char* id)
     logger::log(logger_verbosity_enum::VERBOSITY_ERROR,
         __FILE__,
         __LINE__,
-        fmt::format("Mismatched scope! expected ({}), got ({})", vector.back().id, id ? id : "")
+        fmt::format("Mismatched scope! expected ({}), got ({})", g_scope_stack.back().id, id ? id : "")
             .c_str());
 }
 
 #if LOGGING_HAS_LOGURU
 using scope_pair = std::pair<std::string, std::shared_ptr<loguru::LogScopeRAII>>;
-static std::mutex g_loguru_mutex;
-
-static std::unordered_map<std::thread::id, std::vector<scope_pair>>& loguru_scope_vectors()
-{
-    static std::unordered_map<std::thread::id, std::vector<scope_pair>> vectors;
-    return vectors;
-}
-
-static std::vector<scope_pair>& loguru_get_vector()
-{
-    const std::scoped_lock guard(g_loguru_mutex);
-    return loguru_scope_vectors()[std::this_thread::get_id()];
-}
+thread_local std::vector<scope_pair> g_loguru_scope_stack;
 
 static void loguru_push_scope(const char* id, std::shared_ptr<loguru::LogScopeRAII> ptr)
 {
-    loguru_get_vector().emplace_back(std::string(id ? id : ""), std::move(ptr));
+    g_loguru_scope_stack.emplace_back(std::string(id ? id : ""), std::move(ptr));
 }
 
 static void loguru_pop_scope(const char* id)
 {
-    auto& vector = loguru_get_vector();
-    if (vector.empty())
+    if (g_loguru_scope_stack.empty())
     {
         LOG_F(ERROR, "Mismatched scope! stack empty, got (%s)", id ? id : "");
         return;
     }
-    if (id != nullptr && vector.back().first == id)
+    if (id != nullptr && g_loguru_scope_stack.back().first == id)
     {
-        vector.pop_back();
-        if (vector.empty())
-        {
-            const std::scoped_lock guard(g_loguru_mutex);
-            loguru_scope_vectors().erase(std::this_thread::get_id());
-        }
+        g_loguru_scope_stack.pop_back();
         return;
     }
     LOG_F(ERROR,
         "Mismatched scope! expected (%s), got (%s)",
-        vector.back().first.c_str(),
+        g_loguru_scope_stack.back().first.c_str(),
         id ? id : "");
 }
 #endif
