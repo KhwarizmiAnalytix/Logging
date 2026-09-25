@@ -404,7 +404,8 @@ logger_verbosity_enum logger::convert_to_verbosity(const char* text)
 //=============================================================================
 // Structured logging
 //=============================================================================
-void structured_event::emit_structured(logger_verbosity_enum lv, const char* fname, unsigned line) const
+void structured_event::emit_structured(
+    logger_verbosity_enum lv, const char* fname, unsigned line) const
 {
     std::string output = fmt::format("event={}", name_);
     if (!message_.empty())

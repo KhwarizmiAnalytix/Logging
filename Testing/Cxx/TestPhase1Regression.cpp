@@ -121,16 +121,61 @@ TEST_F(Phase1Regression, LazyEvaluationWhenFiltered)
     EXPECT_FALSE(was_evaluated) << "Lazy evaluation failed: argument was evaluated despite filter";
 }
 
-// P1: Callback lifetime - duplicate registration with same ID should replace
-// CURRENT BEHAVIOR: Duplicate registration overwrites map entry but old sink remains
-// This is a Phase 2 implementation target (owning handles and deferred close).
+// P1: Callback lifetime - duplicate registration with same ID should replace,
+// closing the old registration (running its close handler exactly once) so
+// callers relying on close-for-cleanup don't leak.
 TEST_F(Phase1Regression, DuplicateCallbackRegistrationReplaces)
 {
 #if LOGGING_HAS_GLOG
     GTEST_SKIP() << "glog backend does not support custom callbacks";
 #else
-    GTEST_SKIP() << "Phase 2 feature: callback replacement with proper cleanup not yet "
-                    "implemented. See PHASE1_BASELINE_REPORT.md P1-5";
+    struct Registration
+    {
+        CallbackCounter counter;
+        int             close_count = 0;
+    };
+    Registration first;
+    Registration second;
+
+    auto close_handler = [](void* user_data)
+    { static_cast<Registration*>(user_data)->close_count++; };
+    auto log_handler = [](void* user_data, const logging::logger::Message& message)
+    { static_cast<Registration*>(user_data)->counter.handle(message); };
+
+    logger::add_callback("dup-test",
+        log_handler,
+        &first,
+        logger_verbosity_enum::VERBOSITY_INFO,
+        close_handler,
+        nullptr);
+    // Re-register under the same id before ever removing it: this must
+    // replace, not accumulate a second live registration.
+    logger::add_callback("dup-test",
+        log_handler,
+        &second,
+        logger_verbosity_enum::VERBOSITY_INFO,
+        close_handler,
+        nullptr);
+
+    // Replacing must close the first registration exactly once.
+    EXPECT_EQ(first.close_count, 1);
+    EXPECT_EQ(second.close_count, 0);
+
+    LOGGING_LOG_INFO("after-replace");
+    logger::flush();
+
+    // Only the second (surviving) registration should have received the message.
+    EXPECT_EQ(first.counter.count, 0);
+    EXPECT_EQ(second.counter.count, 1);
+
+    bool removed = logger::remove_callback("dup-test");
+    EXPECT_TRUE(removed);
+    EXPECT_EQ(second.close_count, 1);
+
+    // Nothing left registered under this id.
+    LOGGING_LOG_INFO("after-remove");
+    logger::flush();
+    EXPECT_EQ(second.counter.count, 1);
 #endif
 }
 

@@ -2,12 +2,14 @@
 #ifndef LOGGING_SRC_BACKEND_BACKEND_SHARED_H
 #define LOGGING_SRC_BACKEND_BACKEND_SHARED_H
 
+#include <atomic>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <string>
 #include <system_error>
+#include <thread>
 
 #include "include/logger/logger_verbosity_enum.h"
 
@@ -121,6 +123,36 @@ public:
 private:
     bool was_in_callback_;
 };
+
+/**
+ * Blocks until `in_flight` drops to zero, then returns true, meaning it is
+ * now safe for the caller to release resources tied to the entry (e.g. call
+ * its close handler): no invocation of that entry's callback, started before
+ * the entry was unpublished (removed from the lookup map/sink list) under
+ * the same lock, is still running.
+ *
+ * Returns false WITHOUT waiting when called from inside a callback
+ * invocation on this thread (g_in_user_callback true): spinning here would
+ * deadlock a callback that removes itself, since this thread's own
+ * increment can't be decremented until the callback (which is blocked here)
+ * returns. The caller should still run its cleanup in that case, accepting a
+ * narrow residual race against a *different* thread concurrently invoking
+ * the same entry -- unavoidable without a reentrant-aware wait queue, and a
+ * self-removing callback already implies the caller controls its own
+ * lifetime on this thread.
+ */
+inline bool wait_for_callback_drain(const std::atomic<int>& in_flight)
+{
+    if (g_in_user_callback)
+    {
+        return false;
+    }
+    while (in_flight.load(std::memory_order_acquire) > 0)
+    {
+        std::this_thread::yield();
+    }
+    return true;
+}
 
 }  // namespace shared
 }  // namespace backend

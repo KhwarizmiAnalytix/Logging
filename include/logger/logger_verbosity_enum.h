@@ -4,7 +4,7 @@
 
 namespace logging
 {
-//inline with loguru's verbosity levels
+// inline with loguru's verbosity levels
 enum class logger_verbosity_enum : int
 {
     VERBOSITY_INVALID = -10,

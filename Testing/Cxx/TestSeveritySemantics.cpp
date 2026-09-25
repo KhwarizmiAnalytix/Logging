@@ -36,36 +36,52 @@ TEST(SeveritySemantics, Ordering)
 TEST(SeveritySemantics, InfoThreshold)
 {
     // At an info threshold, fatal/error/warning/info pass and trace is dropped.
-    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_INFO));
-    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_INFO));
-    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_WARNING, logger_verbosity_enum::VERBOSITY_INFO));
-    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_ERROR, logger_verbosity_enum::VERBOSITY_INFO));
-    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_INFO));
+    EXPECT_FALSE(
+        should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_INFO));
+    EXPECT_TRUE(
+        should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_INFO));
+    EXPECT_TRUE(should_log(
+        logger_verbosity_enum::VERBOSITY_WARNING, logger_verbosity_enum::VERBOSITY_INFO));
+    EXPECT_TRUE(
+        should_log(logger_verbosity_enum::VERBOSITY_ERROR, logger_verbosity_enum::VERBOSITY_INFO));
+    EXPECT_TRUE(
+        should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_INFO));
 }
 
 TEST(SeveritySemantics, TraceThresholdPassesEverything)
 {
-    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_TRACE));
-    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_TRACE));
-    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_TRACE));
+    EXPECT_TRUE(
+        should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_TRACE));
+    EXPECT_TRUE(
+        should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_TRACE));
+    EXPECT_TRUE(
+        should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_TRACE));
 }
 
 TEST(SeveritySemantics, ErrorThresholdDropsWarningAndBelow)
 {
-    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_ERROR));
-    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_ERROR));
-    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_WARNING, logger_verbosity_enum::VERBOSITY_ERROR));
-    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_ERROR, logger_verbosity_enum::VERBOSITY_ERROR));
-    EXPECT_TRUE(should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_ERROR));
+    EXPECT_FALSE(
+        should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_ERROR));
+    EXPECT_FALSE(
+        should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_ERROR));
+    EXPECT_FALSE(should_log(
+        logger_verbosity_enum::VERBOSITY_WARNING, logger_verbosity_enum::VERBOSITY_ERROR));
+    EXPECT_TRUE(
+        should_log(logger_verbosity_enum::VERBOSITY_ERROR, logger_verbosity_enum::VERBOSITY_ERROR));
+    EXPECT_TRUE(
+        should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_ERROR));
 }
 
 TEST(SeveritySemantics, OffThresholdDropsEverything)
 {
     // off is a sentinel meaning "emit nothing"; even fatal is filtered by the
     // gate itself. Callers keep fatal alive via the separate is_fatal() bypass.
-    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_OFF));
-    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_OFF));
-    EXPECT_FALSE(should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_OFF));
+    EXPECT_FALSE(
+        should_log(logger_verbosity_enum::VERBOSITY_TRACE, logger_verbosity_enum::VERBOSITY_OFF));
+    EXPECT_FALSE(
+        should_log(logger_verbosity_enum::VERBOSITY_INFO, logger_verbosity_enum::VERBOSITY_OFF));
+    EXPECT_FALSE(
+        should_log(logger_verbosity_enum::VERBOSITY_FATAL, logger_verbosity_enum::VERBOSITY_OFF));
 }
 
 TEST(SeveritySemantics, FatalBypassesFiltering)
@@ -82,7 +98,7 @@ TEST(SeveritySemantics, FatalBypassesFiltering)
              logger_verbosity_enum::VERBOSITY_OFF})
     {
         EXPECT_TRUE(is_fatal(logger_verbosity_enum::VERBOSITY_FATAL) ||
-            should_log(logger_verbosity_enum::VERBOSITY_FATAL, threshold))
+                    should_log(logger_verbosity_enum::VERBOSITY_FATAL, threshold))
             << "fatal was filtered at threshold " << static_cast<int>(threshold);
     }
 }

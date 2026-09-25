@@ -95,12 +95,11 @@ public:
         payload.preamble  = formatted_line;
         payload.message   = message;
 
-        std::vector<callback_entry> callbacks_copy;
+        std::vector<std::shared_ptr<callback_entry>> callbacks_copy;
         {
             const std::scoped_lock guard(io_mutex_);
-            if (fatal ||
-                (console_mode_.load(std::memory_order_relaxed) &&
-                    static_cast<int>(severity) <= stderr_cutoff))
+            if (fatal || (console_mode_.load(std::memory_order_relaxed) &&
+                             static_cast<int>(severity) <= stderr_cutoff))
             {
                 fmt::print(stderr, fg(get_severity_color(severity)), "{}\n", formatted_line);
             }
@@ -113,12 +112,17 @@ public:
                 }
             }
 
+            // Mark each matching entry in-flight *under this same lock*, so
+            // remove_callback (which also takes io_mutex_ to unpublish an
+            // entry) can never unpublish an entry after we've decided to call
+            // it but before we've recorded that we're about to.
             callbacks_copy.reserve(callbacks_.size());
             for (const auto& [id, entry] : callbacks_)
             {
                 (void)id;
-                if (entry.callback != nullptr && severity <= entry.verbosity)
+                if (entry->callback != nullptr && severity <= entry->verbosity)
                 {
+                    entry->in_flight.fetch_add(1, std::memory_order_acq_rel);
                     callbacks_copy.push_back(entry);
                 }
             }
@@ -126,11 +130,14 @@ public:
 
         for (const auto& entry : callbacks_copy)
         {
-            shared::CallbackReentrancyGuard guard;
-            if (!guard.is_reentrant())
             {
-                entry.callback(entry.user_data, payload);
+                shared::CallbackReentrancyGuard guard;
+                if (!guard.is_reentrant())
+                {
+                    entry->callback(entry->user_data, payload);
+                }
             }
+            entry->in_flight.fetch_sub(1, std::memory_order_acq_rel);
         }
 
         shared::abort_if_fatal(severity);
@@ -172,10 +179,11 @@ public:
             }
         }
         file_sink sink;
-        sink.path             = path;
-        sink.verbosity        = severity;
-        const auto open_mode = (mode == logger::file_mode::append) ? (std::ios::out | std::ios::app)
-                                                                    : (std::ios::out | std::ios::trunc);
+        sink.path            = path;
+        sink.verbosity       = severity;
+        const auto open_mode = (mode == logger::file_mode::append)
+                                   ? (std::ios::out | std::ios::app)
+                                   : (std::ios::out | std::ios::trunc);
         sink.stream.open(path, open_mode);
         files_.push_back(std::move(sink));
     }
@@ -218,9 +226,9 @@ public:
             for (auto& [id, entry] : callbacks_)
             {
                 (void)id;
-                if (entry.on_flush != nullptr)
+                if (entry->on_flush != nullptr)
                 {
-                    callbacks_to_invoke.push_back({entry.on_flush, entry.user_data});
+                    callbacks_to_invoke.push_back({entry->on_flush, entry->user_data});
                 }
             }
         }
@@ -260,8 +268,24 @@ public:
         {
             return;
         }
-        const std::scoped_lock guard(io_mutex_);
-        callbacks_[id] = callback_entry{callback, on_close, on_flush, user_data, severity};
+        auto new_entry =
+            std::make_shared<callback_entry>(callback, on_close, on_flush, user_data, severity);
+
+        // A registration under the same id replaces the old one, closing it
+        // exactly like an explicit remove_callback() would (drain in-flight
+        // invocations, then run its close handler) rather than silently
+        // dropping the old handle and leaking its resource.
+        std::shared_ptr<callback_entry> old_entry;
+        {
+            const std::scoped_lock guard(io_mutex_);
+            auto                   it = callbacks_.find(id);
+            if (it != callbacks_.end())
+            {
+                old_entry = std::move(it->second);
+            }
+            callbacks_[id] = std::move(new_entry);
+        }
+        close_entry(old_entry);
     }
 
     bool remove_callback(const char* id)
@@ -270,8 +294,7 @@ public:
         {
             return false;
         }
-        logger::close_handler_callback_t on_close  = nullptr;
-        void*                            user_data = nullptr;
+        std::shared_ptr<callback_entry> removed_entry;
         {
             const std::scoped_lock guard(io_mutex_);
             auto                   it = callbacks_.find(id);
@@ -279,19 +302,10 @@ public:
             {
                 return false;
             }
-            on_close  = it->second.on_close;
-            user_data = it->second.user_data;
+            removed_entry = std::move(it->second);
             callbacks_.erase(it);
         }
-
-        if (on_close != nullptr)
-        {
-            shared::CallbackReentrancyGuard guard;
-            if (!guard.is_reentrant())
-            {
-                on_close(user_data);
-            }
-        }
+        close_entry(removed_entry);
         return true;
     }
 
@@ -300,11 +314,11 @@ public:
     class Scope
     {
     public:
-        Scope(NativeBackend&    owner,
+        Scope(NativeBackend&      owner,
             logger_verbosity_enum severity,
-            const char*            fname,
-            unsigned               line,
-            std::string            msg)
+            const char*           fname,
+            unsigned              line,
+            std::string           msg)
             : owner_(&owner), severity_(severity), fname_(fname != nullptr ? fname : ""),
               line_(line), msg_(std::move(msg)), entry_time_(std::chrono::steady_clock::now())
         {
@@ -331,12 +345,12 @@ public:
         }
 
     private:
-        NativeBackend*                         owner_;
-        logger_verbosity_enum                  severity_;
-        std::string                            fname_;
-        unsigned                                line_;
-        std::string                            msg_;
-        std::chrono::steady_clock::time_point  entry_time_;
+        NativeBackend*                        owner_;
+        logger_verbosity_enum                 severity_;
+        std::string                           fname_;
+        unsigned                              line_;
+        std::string                           msg_;
+        std::chrono::steady_clock::time_point entry_time_;
     };
 
     std::unique_ptr<Scope> scope_enter(
@@ -363,15 +377,51 @@ private:
 
     struct callback_entry
     {
-        logger::log_handler_callback_t   callback{nullptr};
-        logger::close_handler_callback_t on_close{nullptr};
-        logger::flush_handler_callback_t on_flush{nullptr};
-        void*                            user_data{nullptr};
-        logger_verbosity_enum            verbosity{logger_verbosity_enum::VERBOSITY_INFO};
+        logger::log_handler_callback_t   callback;
+        logger::close_handler_callback_t on_close;
+        logger::flush_handler_callback_t on_flush;
+        void*                            user_data;
+        logger_verbosity_enum            verbosity;
+        // Count of calls to `callback` currently executing (started while the
+        // entry was still published in `callbacks_`, incremented under
+        // io_mutex_). remove_callback/add_callback (on replacement) drain
+        // this to zero before calling on_close, so a close handler never
+        // frees state a concurrent invocation is still using.
+        std::atomic<int> in_flight{0};
+
+        callback_entry(logger::log_handler_callback_t cb,
+            logger::close_handler_callback_t          close_cb,
+            logger::flush_handler_callback_t          flush_cb,
+            void*                                     data,
+            logger_verbosity_enum                     sev)
+            : callback(cb), on_close(close_cb), on_flush(flush_cb), user_data(data), verbosity(sev)
+        {
+        }
     };
 
-    static std::string format_line(
-        const char* fname, unsigned line, logger_verbosity_enum severity, const std::string& message)
+    // Waits for any in-flight invocation of `entry` to finish, then runs its
+    // close handler (if any). No-op if `entry` is null (nothing to replace).
+    static void close_entry(const std::shared_ptr<callback_entry>& entry)
+    {
+        if (!entry)
+        {
+            return;
+        }
+        shared::wait_for_callback_drain(entry->in_flight);
+        if (entry->on_close != nullptr)
+        {
+            shared::CallbackReentrancyGuard guard;
+            if (!guard.is_reentrant())
+            {
+                entry->on_close(entry->user_data);
+            }
+        }
+    }
+
+    static std::string format_line(const char* fname,
+        unsigned                               line,
+        logger_verbosity_enum                  severity,
+        const std::string&                     message)
     {
         const char* thread = g_thread_name;
         if (thread[0] != '\0')
@@ -408,9 +458,9 @@ private:
         for (const auto& [id, entry] : callbacks_)
         {
             (void)id;
-            if (entry.callback != nullptr)
+            if (entry->callback != nullptr)
             {
-                cutoff = std::max(cutoff, static_cast<int>(entry.verbosity));
+                cutoff = std::max(cutoff, static_cast<int>(entry->verbosity));
             }
         }
         return cutoff;
@@ -418,11 +468,11 @@ private:
 
     static inline thread_local char g_thread_name[128] = {};
 
-    std::atomic<int>   cutoff_{static_cast<int>(logger_verbosity_enum::VERBOSITY_INFO)};
-    std::atomic<bool>  console_mode_{true};
-    mutable std::mutex io_mutex_;
-    std::vector<file_sink>                          files_;
-    std::unordered_map<std::string, callback_entry> callbacks_;
+    std::atomic<int>       cutoff_{static_cast<int>(logger_verbosity_enum::VERBOSITY_INFO)};
+    std::atomic<bool>      console_mode_{true};
+    mutable std::mutex     io_mutex_;
+    std::vector<file_sink> files_;
+    std::unordered_map<std::string, std::shared_ptr<callback_entry>> callbacks_;
 };
 
 }  // namespace detail

@@ -223,10 +223,9 @@ private:
 #define LOGGING_VLOG_IF(level, cond, format_string, ...)                                           \
     do                                                                                             \
     {                                                                                              \
-        if ((cond) &&                                                                              \
-            (logging::is_fatal(static_cast<logging::logger_verbosity_enum>(level)) ||              \
-                logging::should_log(static_cast<logging::logger_verbosity_enum>(level),            \
-                    logging::logger::get_current_verbosity_cutoff())))                             \
+        if ((cond) && (logging::is_fatal(static_cast<logging::logger_verbosity_enum>(level)) ||    \
+                          logging::should_log(static_cast<logging::logger_verbosity_enum>(level),  \
+                              logging::logger::get_current_verbosity_cutoff())))                   \
         {                                                                                          \
             logging::logger::log(static_cast<logging::logger_verbosity_enum>(level),               \
                 __FILE__,                                                                          \

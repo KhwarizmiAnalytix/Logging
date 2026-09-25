@@ -275,7 +275,8 @@ TEST_F(CoverageGaps, LoggerVerbosityInvalidConversion)
 TEST_F(CoverageGaps, ExceptionGetMode)
 {
     auto mode = logging::get_exception_mode();
-    EXPECT_TRUE(mode == logging::exception_mode::THROW || mode == logging::exception_mode::LOG_FATAL);
+    EXPECT_TRUE(
+        mode == logging::exception_mode::THROW || mode == logging::exception_mode::LOG_FATAL);
 }
 
 TEST_F(CoverageGaps, ExceptionSetMode)
@@ -288,8 +289,8 @@ TEST_F(CoverageGaps, ExceptionSetMode)
 
 TEST_F(CoverageGaps, ExceptionConstructorSimple)
 {
-    logging::exception ex("Test message", "backtrace", nullptr,
-        logging::exception_category::GENERIC);
+    logging::exception ex(
+        "Test message", "backtrace", nullptr, logging::exception_category::GENERIC);
     EXPECT_NE(ex.what(), nullptr);
     EXPECT_TRUE(std::string(ex.what()).find("Test message") != std::string::npos);
 }
@@ -297,7 +298,7 @@ TEST_F(CoverageGaps, ExceptionConstructorSimple)
 TEST_F(CoverageGaps, ExceptionConstructorSourceLocation)
 {
     logging::source_location loc{"func", "file.cpp", 42};
-    logging::exception ex(loc, "Error from function", logging::exception_category::GENERIC);
+    logging::exception       ex(loc, "Error from function", logging::exception_category::GENERIC);
     EXPECT_NE(ex.what(), nullptr);
     std::string what(ex.what());
     EXPECT_TRUE(what.find("Error from function") != std::string::npos);
@@ -306,8 +307,8 @@ TEST_F(CoverageGaps, ExceptionConstructorSourceLocation)
 
 TEST_F(CoverageGaps, ExceptionWithoutBacktrace)
 {
-    logging::exception ex("Base message", "stack trace", nullptr,
-        logging::exception_category::GENERIC);
+    logging::exception ex(
+        "Base message", "stack trace", nullptr, logging::exception_category::GENERIC);
     const char* what_without_bt = ex.what_without_backtrace();
     EXPECT_NE(what_without_bt, nullptr);
     EXPECT_TRUE(std::string(what_without_bt).find("Base message") != std::string::npos);
@@ -325,11 +326,11 @@ TEST_F(CoverageGaps, ExceptionAddContext)
 
 TEST_F(CoverageGaps, ExceptionNestedConstructor)
 {
-    auto nested = std::make_shared<logging::exception>("Nested error", "", nullptr,
-        logging::exception_category::GENERIC);
+    auto nested = std::make_shared<logging::exception>(
+        "Nested error", "", nullptr, logging::exception_category::GENERIC);
     logging::source_location loc{"func", "file.cpp", 99};
-    logging::exception ex(loc, "Outer error", nested, logging::exception_category::GENERIC);
-    std::string what(ex.what());
+    logging::exception       ex(loc, "Outer error", nested, logging::exception_category::GENERIC);
+    std::string              what(ex.what());
     EXPECT_TRUE(what.find("Outer error") != std::string::npos);
     EXPECT_TRUE(what.find("Caused by:") != std::string::npos);
     EXPECT_TRUE(what.find("Nested error") != std::string::npos);
@@ -343,9 +344,8 @@ TEST_F(CoverageGaps, ExceptionMessage)
 
 TEST_F(CoverageGaps, ExceptionBacktrace)
 {
-    std::string backtrace_text = "Frame 1\nFrame 2\n";
-    logging::exception ex("Error", backtrace_text, nullptr,
-        logging::exception_category::GENERIC);
+    std::string        backtrace_text = "Frame 1\nFrame 2\n";
+    logging::exception ex("Error", backtrace_text, nullptr, logging::exception_category::GENERIC);
     EXPECT_EQ(ex.backtrace(), backtrace_text);
 }
 
@@ -357,7 +357,7 @@ TEST_F(CoverageGaps, ExceptionCategory)
 
 TEST_F(CoverageGaps, ExceptionCaller)
 {
-    const void* test_addr = reinterpret_cast<const void*>(0x12345678);
+    const void*        test_addr = reinterpret_cast<const void*>(0x12345678);
     logging::exception ex("Error", "", test_addr, logging::exception_category::GENERIC);
     EXPECT_EQ(ex.caller(), test_addr);
 }
@@ -381,7 +381,7 @@ TEST_F(CoverageGaps, ExceptionThrowMode)
 TEST_F(CoverageGaps, ExceptionRefreshWhat)
 {
     logging::exception ex("Initial", "", nullptr, logging::exception_category::GENERIC);
-    std::string initial = ex.what();
+    std::string        initial = ex.what();
     ex.add_context("New context");
     std::string after = ex.what();
     EXPECT_TRUE(std::string(after).find("New context") != std::string::npos);
@@ -427,16 +427,16 @@ TEST_F(CoverageGaps, StringEndsWith)
 
 TEST_F(CoverageGaps, StringReplaceAll)
 {
-    std::string text = "hello hello world";
-    size_t count = logging::replace_all(text, "hello", "goodbye");
+    std::string text  = "hello hello world";
+    size_t      count = logging::replace_all(text, "hello", "goodbye");
     EXPECT_EQ(count, 2);
     EXPECT_EQ(text, "goodbye goodbye world");
 }
 
 TEST_F(CoverageGaps, StringReplaceAllNoMatch)
 {
-    std::string text = "hello world";
-    size_t count = logging::replace_all(text, "xyz", "abc");
+    std::string text  = "hello world";
+    size_t      count = logging::replace_all(text, "xyz", "abc");
     EXPECT_EQ(count, 0);
     EXPECT_EQ(text, "hello world");
 }

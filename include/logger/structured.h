@@ -7,7 +7,8 @@
 
 #include "logger_verbosity_enum.h"
 
-namespace logging {
+namespace logging
+{
 
 /**
  * Structured logging - emit key-value pairs alongside messages.
@@ -35,7 +36,8 @@ namespace logging {
  * will emit these as JSON objects. Others format as key=value strings.
  */
 
-class structured_event {
+class structured_event
+{
 public:
     explicit structured_event(const char* event_name) : name_(event_name) {}
 
@@ -107,12 +109,12 @@ public:
 
     // Access fields
     const std::map<std::string, std::string>& fields() const { return fields_; }
-    const std::string& name() const { return name_; }
-    const std::string& message() const { return message_; }
+    const std::string&                        name() const { return name_; }
+    const std::string&                        message() const { return message_; }
 
 private:
-    std::string name_;
-    std::string message_;
+    std::string                        name_;
+    std::string                        message_;
     std::map<std::string, std::string> fields_;
 
     void emit_structured(logger_verbosity_enum lv, const char* fname, unsigned line) const;

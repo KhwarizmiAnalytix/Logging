@@ -168,11 +168,11 @@ public:
     class Scope
     {
     public:
-        Scope(GlogBackend&    owner,
+        Scope(GlogBackend&        owner,
             logger_verbosity_enum severity,
-            const char*            fname,
-            unsigned               line,
-            std::string            msg)
+            const char*           fname,
+            unsigned              line,
+            std::string           msg)
             : owner_(&owner), severity_(severity), fname_(fname != nullptr ? fname : ""),
               line_(line), msg_(std::move(msg))
         {

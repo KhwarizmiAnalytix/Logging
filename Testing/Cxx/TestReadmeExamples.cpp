@@ -32,10 +32,7 @@ TEST(ReadmeExamples, VerbosityEnumExists)
 // Test 3: Config object can be created
 TEST(ReadmeExamples, ConfigStructure)
 {
-    logging::config cfg{
-        .level   = logging::logger_verbosity_enum::VERBOSITY_INFO,
-        .console = true
-    };
+    logging::config cfg{.level = logging::logger_verbosity_enum::VERBOSITY_INFO, .console = true};
 
     EXPECT_EQ(cfg.level, logging::logger_verbosity_enum::VERBOSITY_INFO);
     EXPECT_TRUE(cfg.console);

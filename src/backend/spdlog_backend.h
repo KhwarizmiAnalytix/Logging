@@ -62,7 +62,7 @@ inline spdlog::level::level_enum to_spdlog_msg_level(logger_verbosity_enum v)
         return spdlog::level::info;
     default:
         return (v > logger_verbosity_enum::VERBOSITY_INFO) ? spdlog::level::trace
-                                                            : spdlog::level::critical;
+                                                           : spdlog::level::critical;
     }
 }
 
@@ -105,7 +105,7 @@ public:
     logger_verbosity_enum get_cutoff() const
     {
         const_cast<SpdlogBackend*>(this)->ensure_logger();
-        const std::scoped_lock guard(sinks_mutex_);
+        const std::scoped_lock    guard(sinks_mutex_);
         spdlog::level::level_enum best = spdlog::level::off;
         if (console_mode_.load(std::memory_order_relaxed) && stderr_sink_ != nullptr)
         {
@@ -119,7 +119,7 @@ public:
         for (const auto& [id, entry] : callback_sinks_)
         {
             (void)id;
-            best = std::min(best, entry.sink->level());
+            best = std::min(best, entry->sink->level());
         }
         return from_spdlog_level(best);
     }
@@ -186,9 +186,9 @@ public:
             for (const auto& [id, entry] : callback_sinks_)
             {
                 (void)id;
-                if (entry.on_flush != nullptr)
+                if (entry->on_flush != nullptr)
                 {
-                    callbacks_to_invoke.push_back({entry.on_flush, entry.user_data});
+                    callbacks_to_invoke.push_back({entry->on_flush, entry->user_data});
                 }
             }
         }
@@ -221,7 +221,7 @@ public:
         return {"N/A"};
     }
 
-    void add_callback(const char* id,
+    void add_callback(const char*        id,
         logger::log_handler_callback_t   callback,
         void*                            user_data,
         logger_verbosity_enum            severity,
@@ -233,9 +233,16 @@ public:
             return;
         }
         ensure_logger();
-        auto cb_sink = std::make_shared<spdlog::sinks::callback_sink_mt>(
-            [callback, user_data](const spdlog::details::log_msg& msg)
+
+        // Shared with the sink's callback lambda below, so we can tell when
+        // it is safe to run on_close: dist_sink_ has its own internal
+        // locking around add_sink/remove_sink/log, but we don't rely on its
+        // granularity -- this counter is authoritative regardless.
+        auto in_flight = std::make_shared<std::atomic<int>>(0);
+        auto cb_sink   = std::make_shared<spdlog::sinks::callback_sink_mt>(
+            [callback, user_data, in_flight](const spdlog::details::log_msg& msg)
             {
+                in_flight->fetch_add(1, std::memory_order_acq_rel);
                 logger::Message logging_msg;
                 logging_msg.filename  = msg.source.filename ? msg.source.filename : "";
                 logging_msg.message   = std::string(msg.payload.data(), msg.payload.size());
@@ -245,23 +252,47 @@ public:
                     msg.source.line);
                 logging_msg.verbosity = from_spdlog_level(msg.level);
                 logging_msg.line      = static_cast<unsigned>(msg.source.line);
-                shared::CallbackReentrancyGuard guard;
-                if (!guard.is_reentrant())
                 {
-                    callback(user_data, logging_msg);
+                    shared::CallbackReentrancyGuard guard;
+                    if (!guard.is_reentrant())
+                    {
+                        callback(user_data, logging_msg);
+                    }
                 }
+                in_flight->fetch_sub(1, std::memory_order_acq_rel);
             });
         cb_sink->set_level(to_spdlog_min_level(severity));
 
-        const std::scoped_lock guard(sinks_mutex_);
-        callback_sinks_[id] = CallbackEntry{cb_sink, on_close, on_flush, user_data};
-        dist_sink_->add_sink(cb_sink);
+        auto new_entry = std::make_shared<CallbackEntry>(
+            CallbackEntry{cb_sink, on_close, on_flush, user_data, in_flight});
+
+        // A registration under the same id replaces the old one, closing it
+        // exactly like an explicit remove_callback() would (unpublish from
+        // dist_sink_, drain in-flight invocations, then run its close
+        // handler) rather than silently dropping the old handle and leaking
+        // its resource.
+        std::shared_ptr<CallbackEntry> old_entry;
+        {
+            const std::scoped_lock guard(sinks_mutex_);
+            auto                   it = callback_sinks_.find(id);
+            if (it != callback_sinks_.end())
+            {
+                dist_sink_->remove_sink(it->second->sink);
+                old_entry = std::move(it->second);
+            }
+            callback_sinks_[id] = std::move(new_entry);
+            dist_sink_->add_sink(cb_sink);
+        }
+        close_entry(old_entry);
     }
 
     bool remove_callback(const char* id)
     {
-        logger::close_handler_callback_t on_close  = nullptr;
-        void*                            user_data = nullptr;
+        if (id == nullptr)
+        {
+            return false;
+        }
+        std::shared_ptr<CallbackEntry> removed_entry;
         {
             const std::scoped_lock guard(sinks_mutex_);
             auto                   it = callback_sinks_.find(id);
@@ -269,20 +300,11 @@ public:
             {
                 return false;
             }
-            dist_sink_->remove_sink(it->second.sink);
-            on_close  = it->second.on_close;
-            user_data = it->second.user_data;
+            dist_sink_->remove_sink(it->second->sink);
+            removed_entry = std::move(it->second);
             callback_sinks_.erase(it);
         }
-
-        if (on_close != nullptr)
-        {
-            shared::CallbackReentrancyGuard guard;
-            if (!guard.is_reentrant())
-            {
-                on_close(user_data);
-            }
-        }
+        close_entry(removed_entry);
         return true;
     }
 
@@ -291,11 +313,11 @@ public:
     class Scope
     {
     public:
-        Scope(SpdlogBackend&    owner,
+        Scope(SpdlogBackend&      owner,
             logger_verbosity_enum severity,
-            const char*            fname,
-            unsigned               line,
-            std::string            msg)
+            const char*           fname,
+            unsigned              line,
+            std::string           msg)
             : owner_(&owner), severity_(severity), fname_(fname != nullptr ? fname : ""),
               line_(line), msg_(std::move(msg)), entry_time_(std::chrono::steady_clock::now())
         {
@@ -326,12 +348,12 @@ public:
         }
 
     private:
-        SpdlogBackend*                         owner_;
-        logger_verbosity_enum                  severity_;
-        std::string                            fname_;
-        unsigned                                line_;
-        std::string                            msg_;
-        std::chrono::steady_clock::time_point  entry_time_;
+        SpdlogBackend*                        owner_;
+        logger_verbosity_enum                 severity_;
+        std::string                           fname_;
+        unsigned                              line_;
+        std::string                           msg_;
+        std::chrono::steady_clock::time_point entry_time_;
     };
 
     std::unique_ptr<Scope> scope_enter(
@@ -364,7 +386,30 @@ private:
         logger::close_handler_callback_t     on_close{nullptr};
         logger::flush_handler_callback_t     on_flush{nullptr};
         void*                                user_data{nullptr};
+        // Shared with the sink's callback lambda (see add_callback); counts
+        // invocations currently executing so remove/replace can drain before
+        // running on_close.
+        std::shared_ptr<std::atomic<int>> in_flight;
     };
+
+    // Waits for any in-flight invocation of `entry` to finish, then runs its
+    // close handler (if any). No-op if `entry` is null (nothing to replace).
+    static void close_entry(const std::shared_ptr<CallbackEntry>& entry)
+    {
+        if (!entry)
+        {
+            return;
+        }
+        shared::wait_for_callback_drain(*entry->in_flight);
+        if (entry->on_close != nullptr)
+        {
+            shared::CallbackReentrancyGuard guard;
+            if (!guard.is_reentrant())
+            {
+                entry->on_close(entry->user_data);
+            }
+        }
+    }
 
     void ensure_logger()
     {
@@ -400,15 +445,15 @@ private:
 
     static inline thread_local char g_thread_name[128] = {};
 
-    std::once_flag                                                        init_flag_;
-    mutable std::mutex                                                    sinks_mutex_;
-    std::atomic<bool>                                                     console_mode_{true};
-    logger_verbosity_enum        requested_verbosity_{logger_verbosity_enum::VERBOSITY_INFO};
+    std::once_flag        init_flag_;
+    mutable std::mutex    sinks_mutex_;
+    std::atomic<bool>     console_mode_{true};
+    logger_verbosity_enum requested_verbosity_{logger_verbosity_enum::VERBOSITY_INFO};
     std::shared_ptr<spdlog::sinks::dist_sink_mt>                          dist_sink_;
     std::shared_ptr<spdlog::logger>                                       logger_;
     std::shared_ptr<spdlog::sinks::sink>                                  stderr_sink_;
     std::unordered_map<std::string, std::shared_ptr<spdlog::sinks::sink>> file_sinks_;
-    std::unordered_map<std::string, CallbackEntry>                        callback_sinks_;
+    std::unordered_map<std::string, std::shared_ptr<CallbackEntry>>       callback_sinks_;
 };
 
 }  // namespace detail

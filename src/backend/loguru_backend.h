@@ -8,7 +8,9 @@
 #include <atomic>
 #include <cstring>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <unordered_set>
 
 #include <loguru.hpp>
 
@@ -106,6 +108,29 @@ public:
         logger::close_handler_callback_t on_close,
         logger::flush_handler_callback_t on_flush)
     {
+        // loguru::add_callback appends unconditionally (its s_callbacks is a
+        // plain vector, no id uniqueness check), so a duplicate id would
+        // accumulate a second live entry instead of replacing the first --
+        // unlike native/spdlog. Remove any existing registration first so a
+        // re-registration under the same id has the same replace semantics
+        // on every backend. loguru::remove_callback takes the same
+        // recursive mutex that guards log()'s callback dispatch, so this is
+        // already race-free against an in-flight invocation. We track ids
+        // ourselves so we only call remove_callback when there is actually
+        // something to replace -- calling it on an unknown id logs a
+        // spurious ERROR (loguru's own behavior).
+        {
+            const std::scoped_lock guard(ids_mutex_);
+            if (registered_ids_.count(id) != 0)
+            {
+                loguru::remove_callback(id);
+            }
+            else
+            {
+                registered_ids_.insert(id);
+            }
+        }
+
         auto* callback_data = new CallbackBridgeData{callback, on_close, on_flush, user_data};
         loguru::add_callback(id,
             callback_bridge_handler,
@@ -115,15 +140,24 @@ public:
             callback_bridge_flush);
     }
 
-    bool remove_callback(const char* id) { return loguru::remove_callback(id); }
+    bool remove_callback(const char* id)
+    {
+        {
+            const std::scoped_lock guard(ids_mutex_);
+            registered_ids_.erase(id);
+        }
+        return loguru::remove_callback(id);
+    }
 
     // RAII scope token. Since LoguruBackend is the only backend type compiled
     // in, callers can hold this concrete type directly (no unique_ptr<base>).
     class Scope
     {
     public:
-        Scope(logger_verbosity_enum severity, const char* fname, unsigned line,
-            const std::string& msg)
+        Scope(logger_verbosity_enum severity,
+            const char*             fname,
+            unsigned                line,
+            const std::string&      msg)
             : data_(std::make_unique<loguru::LogScopeRAII>(
                   static_cast<loguru::Verbosity>(severity), fname, line, "%s", msg.c_str()))
         {
@@ -237,6 +271,9 @@ private:
     std::atomic<bool>     console_mode_{true};
     logger_verbosity_enum requested_verbosity_{logger_verbosity_enum::VERBOSITY_INFO};
     logger_verbosity_enum internal_verbosity_{logger_verbosity_enum::VERBOSITY_INFO};
+
+    std::mutex                      ids_mutex_;
+    std::unordered_set<std::string> registered_ids_;
 };
 
 }  // namespace detail

@@ -4,7 +4,8 @@
 
 #include "logger_verbosity_enum.h"
 
-namespace logging {
+namespace logging
+{
 
 /**
  * Logging configuration object - replaces individual static booleans.
@@ -21,18 +22,20 @@ namespace logging {
  *   logging::logger::init(cfg);
  */
 
-struct signal_config {
-    bool enabled = false;          // Master switch (default: off, safer for libraries)
-    bool sigabrt = false;          // SIGABRT handler
-    bool sigbus = false;           // SIGBUS handler  (platform specific)
-    bool sigfpe = false;           // SIGFPE handler  (arithmetic errors)
-    bool sigill = false;           // SIGILL handler  (illegal instruction)
-    bool sigint = false;           // SIGINT handler  (Ctrl+C)
-    bool sigsegv = false;          // SIGSEGV handler (segmentation fault)
-    bool sigterm = false;          // SIGTERM handler (termination signal)
+struct signal_config
+{
+    bool enabled = false;  // Master switch (default: off, safer for libraries)
+    bool sigabrt = false;  // SIGABRT handler
+    bool sigbus  = false;  // SIGBUS handler  (platform specific)
+    bool sigfpe  = false;  // SIGFPE handler  (arithmetic errors)
+    bool sigill  = false;  // SIGILL handler  (illegal instruction)
+    bool sigint  = false;  // SIGINT handler  (Ctrl+C)
+    bool sigsegv = false;  // SIGSEGV handler (segmentation fault)
+    bool sigterm = false;  // SIGTERM handler (termination signal)
 };
 
-struct config {
+struct config
+{
     /**
      * Base log level - messages more severe than this are always logged.
      * Default: VERBOSITY_INFO (conservative, doesn't spam with debug/trace).
