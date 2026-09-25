@@ -80,9 +80,14 @@ using active_traits = traits<4>;
 #error "No logging backend selected"
 #endif
 
-// Static assertions for unsupported operations:
-// Uncomment below to enforce that callbacks MUST be supported by the active backend
-// static_assert(active_traits::supports_callbacks, "Selected backend does not support callbacks");
+// Helper function to enforce callback support at compile time
+template <typename T = void>
+constexpr void validate_callback_support()
+{
+    static_assert(active_traits::supports_callbacks,
+        "The selected logging backend does not support callbacks. "
+        "Use NATIVE, LOGURU, or SPDLOG backend instead of GLOG.");
+}
 
 }  // namespace backend_traits
 
