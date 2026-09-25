@@ -1,0 +1,14 @@
+@PACKAGE_INIT@
+
+# Backend dependencies (fmt, loguru, glog, spdlog) are linked PRIVATE by the
+# Logging target and never appear in LoggingTargets.cmake's
+# INTERFACE_LINK_LIBRARIES -- they're an implementation detail baked into
+# libLogging at build time, not part of a consumer's link graph. magic_enum
+# is header-only and used from a public header, but its headers are copied
+# directly into this package's own include/ tree rather than exported as a
+# separate dependency. Either way, no find_dependency() calls are needed
+# here.
+
+include("${CMAKE_CURRENT_LIST_DIR}/LoggingTargets.cmake")
+
+check_required_components(Logging)
