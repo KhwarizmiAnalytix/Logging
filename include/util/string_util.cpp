@@ -139,9 +139,8 @@ size_t replace_all(std::string& s, const char* from, const char* to)
  * @brief Remove all occurrences of a substring from a string
  * @note More efficient than replace_all when replacing with empty string
  * @note Uses iterative approach to handle multiple occurrences
- * @note Marked noexcept for performance in exception-sensitive contexts
  */
-void erase_all_sub_string(std::string& mainStr, std::string_view const& toErase) noexcept
+void erase_all_sub_string(std::string& mainStr, std::string_view const& toErase)
 {
     size_t pos;
 

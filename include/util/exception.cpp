@@ -77,21 +77,28 @@ void init_exception_mode_from_env() noexcept
     const char* env_mode = std::getenv("LOGGING_EXCEPTION_MODE");
     if (env_mode != nullptr)
     {
-        std::string mode_str(env_mode);
-        if (mode_str == "LOG_FATAL" || mode_str == "log_fatal")
+        try
         {
-            g_exception_mode_.store(exception_mode::LOG_FATAL, std::memory_order_relaxed);
-            LOGGING_LOG_INFO("Exception mode set to LOG_FATAL from environment");
+            std::string mode_str(env_mode);
+            if (mode_str == "LOG_FATAL" || mode_str == "log_fatal")
+            {
+                g_exception_mode_.store(exception_mode::LOG_FATAL, std::memory_order_relaxed);
+                LOGGING_LOG_INFO("Exception mode set to LOG_FATAL from environment");
+            }
+            else if (mode_str == "THROW" || mode_str == "throw")
+            {
+                g_exception_mode_.store(exception_mode::THROW, std::memory_order_relaxed);
+                LOGGING_LOG_INFO("Exception mode set to THROW from environment");
+            }
+            else
+            {
+                LOGGING_LOG_WARNING(
+                    "Invalid LOGGING_EXCEPTION_MODE value: {}. Using default.", mode_str);
+            }
         }
-        else if (mode_str == "THROW" || mode_str == "throw")
+        catch (...)  // NOLINT(bugprone-empty-catch)
         {
-            g_exception_mode_.store(exception_mode::THROW, std::memory_order_relaxed);
-            LOGGING_LOG_INFO("Exception mode set to THROW from environment");
-        }
-        else
-        {
-            LOGGING_LOG_WARNING(
-                "Invalid LOGGING_EXCEPTION_MODE value: {}. Using default.", mode_str);
+            // If allocation fails, use default mode
         }
     }
 
@@ -147,21 +154,29 @@ exception::exception(
 //-----------------------------------------------------------------------------
 const char* exception::what() const noexcept
 {
-    return what_
-        .ensure(
-            [this]
-            {
-                try
+    try
+    {
+        return what_
+            .ensure(
+                [this]
                 {
-                    return compute_what(/*include_backtrace*/ true);
-                }
-                catch (...)
-                {
-                    // what() is noexcept, we need to return something here.
-                    return std::string{"<Error computing exception::what()>"};
-                }
-            })
-        .c_str();
+                    try
+                    {
+                        return compute_what(/*include_backtrace*/ true);
+                    }
+                    catch (...)
+                    {
+                        // what() is noexcept, we need to return something here.
+                        return std::string{"<Error computing exception::what()>"};
+                    }
+                })
+            .c_str();
+    }
+    catch (...)
+    {
+        static constexpr const char* error_msg = "<Error computing exception::what()>";
+        return error_msg;
+    }
 }
 
 //-----------------------------------------------------------------------------

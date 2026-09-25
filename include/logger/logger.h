@@ -186,7 +186,7 @@ public:
 
 protected:
     logger();
-    ~logger();
+    ~logger() = default;
 
 private:
     static logger_verbosity_enum internal_verbosity_level_;

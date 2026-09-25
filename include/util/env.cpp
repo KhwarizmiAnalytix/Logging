@@ -68,7 +68,14 @@ std::optional<std::string> get_env(const char* name) noexcept
 #endif
     if (envar != nullptr)
     {
-        return std::string(envar);
+        try
+        {
+            return std::string(envar);
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
     }
     return std::nullopt;
 }

@@ -776,8 +776,7 @@ bool                  logger::enable_sigsegv_handler       = false;
 bool                  logger::enable_sigterm_handler       = false;
 logger_verbosity_enum logger::internal_verbosity_level_    = logger_verbosity_enum::VERBOSITY_INFO;
 
-logger::logger()  = default;
-logger::~logger() = default;
+logger::logger() = default;
 
 void logger::set_enable_unsafe_signal_handler(bool enabled)
 {

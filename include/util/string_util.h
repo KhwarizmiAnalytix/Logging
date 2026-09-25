@@ -187,7 +187,7 @@ struct LOGGING_VISIBILITY source_location
 LOGGING_API size_t replace_all(std::string& s, const char* from, const char* to);
 
 LOGGING_API void erase_all_sub_string(
-    std::string& mainStr, std::string_view const& toErase) noexcept;
+    std::string& mainStr, std::string_view const& toErase);
 // =============================================================================
 // C++20 COMPATIBILITY UTILITIES
 // =============================================================================
