@@ -450,11 +450,15 @@ set(logging_headers
   include/logging/backend.h
   include/logging/source_location.h
   include/logging/log.h
+  include/logging/log_typed.h
+  include/logging/log_record.h
+  include/logging/config.h
   include/logging/exception.h
   include/logging/string_util.h
   include/logging/back_trace.h
   include/logging/env.h
   include/logging/lazy.h
+  include/logging/backend_traits.h
 
   # Public headers - common utilities
   include/common/logging_export.h
