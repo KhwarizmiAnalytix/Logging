@@ -1,0 +1,3 @@
+(   0.036s) [TestWorker      ]         TestLogger.cpp:158   INFO| stderr-token-A
+(   0.036s) [TestWorker      ]         TestLogger.cpp:159   WARN| stderr-token-B
+(   0.036s) [TestWorker      ]         TestLogger.cpp:160    ERR| stderr-token-C

@@ -1,0 +1,146 @@
+Current dir: /Users/toufikbellaj/dev/Logging
+File verbosity level: 0
+( uptime  ) [ thread name/id ]                   file:line     v| 
+(   0.046s) [logging-test-wor]             loguru.cpp:865   INFO| Logging to 'test_phase1_duplicate.log', mode: 'w', verbosity: 0
+(   0.046s) [logging-test-wor]TestPhase1Regression.cp:186   INFO| second-write
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-1'
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-2'
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test_phase1.log'
+(   0.046s) [logging-test-wor]             loguru.cpp:669   INFO| arguments: 
+(   0.046s) [logging-test-wor]             loguru.cpp:672   INFO| Current dir: /Users/toufikbellaj/dev/Logging
+(   0.046s) [logging-test-wor]             loguru.cpp:674   INFO| stderr verbosity: -1
+(   0.046s) [logging-test-wor]             loguru.cpp:675   INFO| -----------------------------------
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-1'
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-2'
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test_phase1.log'
+(   0.046s) [logging-test-wor]             loguru.cpp:669   INFO| arguments: 
+(   0.046s) [logging-test-wor]             loguru.cpp:672   INFO| Current dir: /Users/toufikbellaj/dev/Logging
+(   0.046s) [logging-test-wor]             loguru.cpp:674   INFO| stderr verbosity: -1
+(   0.046s) [logging-test-wor]             loguru.cpp:675   INFO| -----------------------------------
+(   0.046s) [logging-test-wor]TestPhase1Regression.cp:218   INFO| { scope-a
+(   0.046s) [logging-test-wor]             logger.cpp:240    ERR| .   Mismatched scope! expected (scope-a), got (scope-b)
+(   0.046s) [logging-test-wor]TestPhase1Regression.cp:224   INFO| .   still-working
+(   0.046s) [logging-test-wor]TestPhase1Regression.cp:218   INFO| } 0.000 s: scope-a
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-1'
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-2'
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test_phase1.log'
+(   0.046s) [logging-test-wor]             loguru.cpp:669   INFO| arguments: 
+(   0.046s) [logging-test-wor]             loguru.cpp:672   INFO| Current dir: /Users/toufikbellaj/dev/Logging
+(   0.046s) [logging-test-wor]             loguru.cpp:674   INFO| stderr verbosity: 0
+(   0.046s) [logging-test-wor]             loguru.cpp:675   INFO| -----------------------------------
+(   0.046s) [logging-test-wor]TestPhase1Regression.cp:259   INFO| before-flush
+(   0.046s) [logging-test-wor]TestPhase1Regression.cp:261   INFO| after-flush
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-1'
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-2'
+(   0.046s) [logging-test-wor]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test_phase1.log'
+(   0.046s) [logging-test-wor]             loguru.cpp:669   INFO| arguments: 
+(   0.046s) [logging-test-wor]             loguru.cpp:672   INFO| Current dir: /Users/toufikbellaj/dev/Logging
+(   0.046s) [logging-test-wor]             loguru.cpp:674   INFO| stderr verbosity: 0
+(   0.046s) [logging-test-wor]             loguru.cpp:675   INFO| -----------------------------------
+(   0.046s) [test-thread-name]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-1'
+(   0.046s) [test-thread-name]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-2'
+(   0.046s) [test-thread-name]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test_phase1.log'
+(   0.046s) [test-thread-name]             loguru.cpp:669   INFO| arguments: 
+(   0.046s) [test-thread-name]             loguru.cpp:672   INFO| Current dir: /Users/toufikbellaj/dev/Logging
+(   0.046s) [test-thread-name]             loguru.cpp:674   INFO| stderr verbosity: 0
+(   0.046s) [test-thread-name]             loguru.cpp:675   INFO| -----------------------------------
+(   0.046s) [test-thread-name]             loguru.cpp:669   INFO| arguments: 
+(   0.046s) [test-thread-name]             loguru.cpp:672   INFO| Current dir: /Users/toufikbellaj/dev/Logging
+(   0.046s) [test-thread-name]             loguru.cpp:674   INFO| stderr verbosity: 0
+(   0.046s) [test-thread-name]             loguru.cpp:675   INFO| -----------------------------------
+(   0.046s) [test-thread-name]TestPhase1Regression.cp:297   INFO| after-repeated-init
+(   0.046s) [test-thread-name]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-1'
+(   0.046s) [test-thread-name]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-2'
+(   0.046s) [test-thread-name]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test_phase1.log'
+(   0.046s) [test-thread-name]             loguru.cpp:669   INFO| arguments: 
+(   0.046s) [test-thread-name]             loguru.cpp:672   INFO| Current dir: /Users/toufikbellaj/dev/Logging
+(   0.046s) [test-thread-name]             loguru.cpp:674   INFO| stderr verbosity: 0
+(   0.046s) [test-thread-name]             loguru.cpp:675   INFO| -----------------------------------
+(   0.046s) [test-thread-name]TestPhase1Regression.cp:317    ERR| error-at-off
+(   0.046s) [test-thread-name]TestPhase1Regression.cp:318   INFO| info-at-off
+(   0.046s) [test-thread-name]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-1'
+(   0.046s) [test-thread-name]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test-callback-2'
+(   0.046s) [test-thread-name]             loguru.cpp:1020   ERR| Failed to locate callback with id 'test_phase1.log'
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit
+(   0.046s) [test-thread-name]             loguru.cpp:546   INFO| atexit

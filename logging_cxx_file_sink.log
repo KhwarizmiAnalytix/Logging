@@ -1,0 +1,5 @@
+Current dir: /Users/toufikbellaj/dev/Logging
+File verbosity level: 0
+( uptime  ) [ thread name/id ]                   file:line     v| 
+(   0.036s) [logging-test-wor]             loguru.cpp:865   INFO| Logging to 'logging_cxx_file_sink.log', mode: 'w', verbosity: 0
+(   0.036s) [logging-test-wor]         TestLogger.cpp:340   INFO| file-sink-token-99

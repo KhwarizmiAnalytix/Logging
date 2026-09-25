@@ -8,6 +8,7 @@
 
 #include "include/logger/logger.h"
 #include "include/logging/structured.h"
+#include "include/util/exception.h"
 
 // Coverage gap tests — structured logging (0% → full)
 
@@ -268,4 +269,212 @@ TEST_F(CoverageGaps, LoggerVerbosityInvalidConversion)
     auto invalid = logging::logger::convert_to_verbosity("INVALID_LEVEL");
     EXPECT_EQ(static_cast<int>(invalid),
         static_cast<int>(logging::logger_verbosity_enum::VERBOSITY_INVALID));
+}
+
+// Exception Tests (71.8% → full coverage)
+TEST_F(CoverageGaps, ExceptionGetMode)
+{
+    auto mode = logging::get_exception_mode();
+    EXPECT_TRUE(mode == logging::exception_mode::THROW || mode == logging::exception_mode::LOG_FATAL);
+}
+
+TEST_F(CoverageGaps, ExceptionSetMode)
+{
+    logging::set_exception_mode(logging::exception_mode::LOG_FATAL);
+    EXPECT_EQ(logging::get_exception_mode(), logging::exception_mode::LOG_FATAL);
+    logging::set_exception_mode(logging::exception_mode::THROW);
+    EXPECT_EQ(logging::get_exception_mode(), logging::exception_mode::THROW);
+}
+
+TEST_F(CoverageGaps, ExceptionConstructorSimple)
+{
+    logging::exception ex("Test message", "backtrace", nullptr,
+        logging::exception_category::GENERIC);
+    EXPECT_NE(ex.what(), nullptr);
+    EXPECT_TRUE(std::string(ex.what()).find("Test message") != std::string::npos);
+}
+
+TEST_F(CoverageGaps, ExceptionConstructorSourceLocation)
+{
+    logging::source_location loc{"func", "file.cpp", 42};
+    logging::exception ex(loc, "Error from function", logging::exception_category::GENERIC);
+    EXPECT_NE(ex.what(), nullptr);
+    std::string what(ex.what());
+    EXPECT_TRUE(what.find("Error from function") != std::string::npos);
+    EXPECT_TRUE(what.find("func") != std::string::npos);
+}
+
+TEST_F(CoverageGaps, ExceptionWithoutBacktrace)
+{
+    logging::exception ex("Base message", "stack trace", nullptr,
+        logging::exception_category::GENERIC);
+    const char* what_without_bt = ex.what_without_backtrace();
+    EXPECT_NE(what_without_bt, nullptr);
+    EXPECT_TRUE(std::string(what_without_bt).find("Base message") != std::string::npos);
+}
+
+TEST_F(CoverageGaps, ExceptionAddContext)
+{
+    logging::exception ex("Main error", "", nullptr, logging::exception_category::GENERIC);
+    ex.add_context("Context 1");
+    ex.add_context("Context 2");
+    std::string what(ex.what());
+    EXPECT_TRUE(what.find("Context 1") != std::string::npos);
+    EXPECT_TRUE(what.find("Context 2") != std::string::npos);
+}
+
+TEST_F(CoverageGaps, ExceptionNestedConstructor)
+{
+    auto nested = std::make_shared<logging::exception>("Nested error", "", nullptr,
+        logging::exception_category::GENERIC);
+    logging::source_location loc{"func", "file.cpp", 99};
+    logging::exception ex(loc, "Outer error", nested, logging::exception_category::GENERIC);
+    std::string what(ex.what());
+    EXPECT_TRUE(what.find("Outer error") != std::string::npos);
+    EXPECT_TRUE(what.find("Caused by:") != std::string::npos);
+    EXPECT_TRUE(what.find("Nested error") != std::string::npos);
+}
+
+TEST_F(CoverageGaps, ExceptionMessage)
+{
+    logging::exception ex("Error message", "", nullptr, logging::exception_category::GENERIC);
+    EXPECT_EQ(ex.msg(), "Error message");
+}
+
+TEST_F(CoverageGaps, ExceptionBacktrace)
+{
+    std::string backtrace_text = "Frame 1\nFrame 2\n";
+    logging::exception ex("Error", backtrace_text, nullptr,
+        logging::exception_category::GENERIC);
+    EXPECT_EQ(ex.backtrace(), backtrace_text);
+}
+
+TEST_F(CoverageGaps, ExceptionCategory)
+{
+    logging::exception ex("Error", "", nullptr, logging::exception_category::VALUE_ERROR);
+    EXPECT_EQ(ex.category(), logging::exception_category::VALUE_ERROR);
+}
+
+TEST_F(CoverageGaps, ExceptionCaller)
+{
+    const void* test_addr = reinterpret_cast<const void*>(0x12345678);
+    logging::exception ex("Error", "", test_addr, logging::exception_category::GENERIC);
+    EXPECT_EQ(ex.caller(), test_addr);
+}
+
+TEST_F(CoverageGaps, ExceptionThrowMode)
+{
+    logging::set_exception_mode(logging::exception_mode::THROW);
+    logging::source_location loc{"test_func", "test.cpp", 50};
+    try
+    {
+        logging::details::check_fail("test_func", "test.cpp", 50, "Check failed");
+        FAIL() << "Expected exception to be thrown";
+    }
+    catch (const logging::exception& e)
+    {
+        std::string what(e.what());
+        EXPECT_TRUE(what.find("Check failed") != std::string::npos);
+    }
+}
+
+TEST_F(CoverageGaps, ExceptionRefreshWhat)
+{
+    logging::exception ex("Initial", "", nullptr, logging::exception_category::GENERIC);
+    std::string initial = ex.what();
+    ex.add_context("New context");
+    std::string after = ex.what();
+    EXPECT_TRUE(std::string(after).find("New context") != std::string::npos);
+}
+
+TEST_F(CoverageGaps, ExceptionMultipleContexts)
+{
+    logging::exception ex("Error", "", nullptr, logging::exception_category::GENERIC);
+    for (int i = 0; i < 5; ++i)
+    {
+        ex.add_context("Context " + std::to_string(i));
+    }
+    std::string what(ex.what());
+    EXPECT_TRUE(what.find("Context 0") != std::string::npos);
+    EXPECT_TRUE(what.find("Context 4") != std::string::npos);
+}
+
+TEST_F(CoverageGaps, ExceptionContextAccess)
+{
+    logging::exception ex("Error", "", nullptr, logging::exception_category::GENERIC);
+    ex.add_context("Context A");
+    ex.add_context("Context B");
+    const auto& contexts = ex.context();
+    EXPECT_EQ(contexts.size(), 2);
+    EXPECT_EQ(contexts[0], "Context A");
+    EXPECT_EQ(contexts[1], "Context B");
+}
+
+// String Utility Tests (65.1% → improve)
+TEST_F(CoverageGaps, StringStartsWith)
+{
+    EXPECT_TRUE(logging::starts_with("hello world", "hello"));
+    EXPECT_FALSE(logging::starts_with("hello world", "world"));
+    EXPECT_TRUE(logging::starts_with("", ""));
+}
+
+TEST_F(CoverageGaps, StringEndsWith)
+{
+    EXPECT_TRUE(logging::ends_with("hello world", "world"));
+    EXPECT_FALSE(logging::ends_with("hello world", "hello"));
+    EXPECT_TRUE(logging::ends_with("", ""));
+}
+
+TEST_F(CoverageGaps, StringReplaceAll)
+{
+    std::string text = "hello hello world";
+    size_t count = logging::replace_all(text, "hello", "goodbye");
+    EXPECT_EQ(count, 2);
+    EXPECT_EQ(text, "goodbye goodbye world");
+}
+
+TEST_F(CoverageGaps, StringReplaceAllNoMatch)
+{
+    std::string text = "hello world";
+    size_t count = logging::replace_all(text, "xyz", "abc");
+    EXPECT_EQ(count, 0);
+    EXPECT_EQ(text, "hello world");
+}
+
+TEST_F(CoverageGaps, StringEraseAllSubstring)
+{
+    std::string text = "hello world hello";
+    logging::erase_all_sub_string(text, "hello");
+    EXPECT_EQ(text, " world ");
+}
+
+TEST_F(CoverageGaps, StringDemangle)
+{
+    std::string demangled = logging::demangle("_Z1gv");
+    // Should either be demangled (if support exists) or original mangled name
+    EXPECT_FALSE(demangled.empty());
+}
+
+TEST_F(CoverageGaps, StringDemangleNull)
+{
+    std::string demangled = logging::demangle(nullptr);
+    EXPECT_EQ(demangled, "<unknown>");
+}
+
+TEST_F(CoverageGaps, StringShortestRoundTripFloat)
+{
+    std::string result = logging::strings::internal::shortest_round_trip(3.14f);
+    EXPECT_FALSE(result.empty());
+}
+
+TEST_F(CoverageGaps, StringShortestRoundTripDouble)
+{
+    std::string result = logging::strings::internal::shortest_round_trip(3.14159);
+    EXPECT_FALSE(result.empty());
+}
+
+TEST_F(CoverageGaps, StringShortestRoundTripLongDouble)
+{
+    std::string result = logging::strings::internal::shortest_round_trip(3.14159L);
+    EXPECT_FALSE(result.empty());
 }

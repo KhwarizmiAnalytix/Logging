@@ -1,0 +1,2 @@
+(   0.036s) [TestWorker      ]         TestLogger.cpp:214   INFO| console-mode-token-1
+(   0.036s) [TestWorker      ]         TestLogger.cpp:215   WARN| console-mode-token-2
