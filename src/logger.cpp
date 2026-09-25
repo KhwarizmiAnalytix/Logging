@@ -357,22 +357,31 @@ void native_end_log_to_file(const char* path)
 
 void native_flush()
 {
-    const std::scoped_lock guard(g_io_mutex);
-    std::fflush(stderr);
-    for (auto& sink : g_files)
+    std::vector<std::pair<logger::flush_handler_callback_t, void*>> callbacks_to_invoke;
+
     {
-        if (sink.stream.is_open())
+        const std::scoped_lock guard(g_io_mutex);
+        std::fflush(stderr);
+        for (auto& sink : g_files)
         {
-            sink.stream.flush();
+            if (sink.stream.is_open())
+            {
+                sink.stream.flush();
+            }
+        }
+        for (auto& [id, entry] : g_callbacks)
+        {
+            (void)id;
+            if (entry.on_flush != nullptr)
+            {
+                callbacks_to_invoke.push_back({entry.on_flush, entry.user_data});
+            }
         }
     }
-    for (auto& [id, entry] : g_callbacks)
+
+    for (auto& [cb, user_data] : callbacks_to_invoke)
     {
-        (void)id;
-        if (entry.on_flush != nullptr)
-        {
-            entry.on_flush(entry.user_data);
-        }
+        cb(user_data);
     }
 }
 
@@ -397,17 +406,25 @@ bool native_remove_callback(const char* id)
     {
         return false;
     }
-    const std::scoped_lock guard(g_io_mutex);
-    auto                   it = g_callbacks.find(id);
-    if (it == g_callbacks.end())
+    logger::close_handler_callback_t on_close  = nullptr;
+    void*                            user_data = nullptr;
+
     {
-        return false;
+        const std::scoped_lock guard(g_io_mutex);
+        auto                   it = g_callbacks.find(id);
+        if (it == g_callbacks.end())
+        {
+            return false;
+        }
+        on_close  = it->second.on_close;
+        user_data = it->second.user_data;
+        g_callbacks.erase(it);
     }
-    if (it->second.on_close != nullptr)
+
+    if (on_close != nullptr)
     {
-        it->second.on_close(it->second.user_data);
+        on_close(user_data);
     }
-    g_callbacks.erase(it);
     return true;
 }
 
@@ -609,38 +626,45 @@ logger::log_scope_raii::log_scope_raii(logger_verbosity_enum verbosity,
 #endif
 }
 
-logger::log_scope_raii::~log_scope_raii()
+logger::log_scope_raii::~log_scope_raii() noexcept
 {
     if (!internals_)
     {
         return;
     }
+    try
+    {
 #if LOGGING_HAS_SPDLOG
-    const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::steady_clock::now() - internals_->entry_time)
-                                .count();
-    spdlog_backend::g_logger->log(
-        spdlog::source_loc{internals_->fname.c_str(), internals_->lineno, ""},
-        spdlog_backend::to_spdlog_msg_level(internals_->verbosity),
-        "[scope exit]  {} ({} us)",
-        internals_->scope_message,
-        elapsed_us);
+        const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - internals_->entry_time)
+                                    .count();
+        spdlog_backend::g_logger->log(
+            spdlog::source_loc{internals_->fname.c_str(), internals_->lineno, ""},
+            spdlog_backend::to_spdlog_msg_level(internals_->verbosity),
+            "[scope exit]  {} ({} us)",
+            internals_->scope_message,
+            elapsed_us);
 #elif LOGGING_HAS_NATIVE
-    const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::steady_clock::now() - internals_->entry_time)
-                                .count();
-    const std::string msg =
-        fmt::format("[scope exit]  {} ({} us)", internals_->scope_message, elapsed_us);
-    logger::log(internals_->verbosity,
-        internals_->fname.c_str(),
-        static_cast<unsigned>(internals_->lineno),
-        msg.c_str());
+        const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - internals_->entry_time)
+                                    .count();
+        const std::string msg =
+            fmt::format("[scope exit]  {} ({} us)", internals_->scope_message, elapsed_us);
+        logger::log(internals_->verbosity,
+            internals_->fname.c_str(),
+            static_cast<unsigned>(internals_->lineno),
+            msg.c_str());
 #elif LOGGING_HAS_GLOG
-    logger::log(internals_->verbosity,
-        internals_->fname.c_str(),
-        static_cast<unsigned>(internals_->lineno),
-        ("[scope exit] " + internals_->scope_message).c_str());
+        logger::log(internals_->verbosity,
+            internals_->fname.c_str(),
+            static_cast<unsigned>(internals_->lineno),
+            ("[scope exit] " + internals_->scope_message).c_str());
 #endif
+    }
+    catch (const std::exception&)
+    {
+        // Suppress exceptions in destructor
+    }
 }
 
 //=============================================================================
@@ -1258,6 +1282,9 @@ bool logger::remove_callback(const char* id)
 #if LOGGING_HAS_LOGURU
     return loguru::remove_callback(id);
 #elif LOGGING_HAS_SPDLOG
+    logger::close_handler_callback_t on_close  = nullptr;
+    void*                            user_data = nullptr;
+
     {
         const std::scoped_lock guard(spdlog_backend::g_sinks_mutex);
         auto                   it = spdlog_backend::g_callback_sinks.find(id);
@@ -1266,13 +1293,16 @@ bool logger::remove_callback(const char* id)
             return false;
         }
         spdlog_backend::g_dist_sink->remove_sink(it->second.sink);
-        if (it->second.on_close != nullptr)
-        {
-            it->second.on_close(it->second.user_data);
-        }
+        on_close  = it->second.on_close;
+        user_data = it->second.user_data;
         spdlog_backend::g_callback_sinks.erase(it);
-        return true;
     }
+
+    if (on_close != nullptr)
+    {
+        on_close(user_data);
+    }
+    return true;
 #elif LOGGING_HAS_NATIVE
     return internal::native_remove_callback(id);
 #else

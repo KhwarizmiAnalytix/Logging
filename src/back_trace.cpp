@@ -148,10 +148,9 @@ std::atomic<bool> g_capture_on_error{true};
 // Public API Implementation
 // ============================================================================
 
-std::string print(
-    LOGGING_UNUSED size_t frames_to_skip,
-    LOGGING_UNUSED size_t maximum_number_of_frames,
-    LOGGING_UNUSED bool   skip_python_frames)
+std::string print(LOGGING_UNUSED size_t frames_to_skip,
+    LOGGING_UNUSED size_t               maximum_number_of_frames,
+    LOGGING_UNUSED bool                 skip_python_frames)
 {
     backtrace_options options;
     options.frames_to_skip           = frames_to_skip;
@@ -172,7 +171,7 @@ std::vector<stack_frame> capture(const backtrace_options& options)
 
 #if SUPPORTS_BACKTRACE
     // Skip this frame (capture) plus user-requested frames
-    size_t frames_to_skip = options.frames_to_skip + 1ULL;  //NOLINT
+    size_t frames_to_skip = options.frames_to_skip + 1ULL;  // NOLINT
 
 #ifdef _WIN32
     // Windows implementation using CaptureStackBackTrace
@@ -180,8 +179,7 @@ std::vector<stack_frame> capture(const backtrace_options& options)
     std::vector<void*> callstack(max_frames, nullptr);
 
     // Capture stack frames
-    USHORT const captured = CaptureStackBackTrace(
-        static_cast<DWORD>(frames_to_skip),
+    USHORT const captured = CaptureStackBackTrace(static_cast<DWORD>(frames_to_skip),
         static_cast<DWORD>(options.maximum_number_of_frames),
         callstack.data(),
         nullptr);
@@ -191,8 +189,7 @@ std::vector<stack_frame> capture(const backtrace_options& options)
     // Initialize symbol handler once; DbgHelp is process-global and not thread-safe.
     static std::once_flag symbol_once;
     static std::mutex     dbghelp_mutex;
-    std::call_once(
-        symbol_once,
+    std::call_once(symbol_once,
         []()
         {
             SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
@@ -244,8 +241,7 @@ std::vector<stack_frame> capture(const backtrace_options& options)
             IMAGEHLP_LINE64 line_info;
             line_info.SizeOfStruct  = sizeof(IMAGEHLP_LINE64);
             DWORD line_displacement = 0;
-            if (SymGetLineFromAddr64(
-                    process,
+            if (SymGetLineFromAddr64(process,
                     reinterpret_cast<DWORD64>(callstack[i]),
                     &line_displacement,
                     &line_info) != 0)

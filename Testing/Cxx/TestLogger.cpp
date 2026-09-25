@@ -134,8 +134,7 @@ TEST(Logger, convert_to_verbosity_string)
     EXPECT_EQ(logger::convert_to_verbosity("TRACE"), logger_verbosity_enum::VERBOSITY_TRACE);
     EXPECT_EQ(logger::convert_to_verbosity("MAX"), logger_verbosity_enum::VERBOSITY_MAX);
     EXPECT_EQ(logger::convert_to_verbosity("NAN"), logger_verbosity_enum::VERBOSITY_INVALID);
-    EXPECT_EQ(
-        logger::convert_to_verbosity(static_cast<const char*>(nullptr)),
+    EXPECT_EQ(logger::convert_to_verbosity(static_cast<const char*>(nullptr)),
         logger_verbosity_enum::VERBOSITY_INVALID);
 }
 
@@ -274,6 +273,59 @@ TEST(Logger, callback_receives_message)
     EXPECT_NE(lines.find("callback-token-42"), std::string::npos);
     EXPECT_TRUE(logger::remove_callback("test-callback"));
     EXPECT_FALSE(logger::remove_callback("test-callback"));
+#endif
+}
+
+TEST(Logger, callbacks_invoke_outside_locks)
+{
+#if LOGGING_HAS_GLOG
+    GTEST_SKIP() << "glog backend does not support custom callbacks";
+#else
+    logger::init();
+    logger::set_stderr_verbosity(logger_verbosity_enum::VERBOSITY_INFO);
+
+    struct CallbackState
+    {
+        bool callback_invoked = false;
+        bool on_flush_invoked = false;
+        bool on_close_invoked = false;
+    };
+
+    CallbackState state;
+
+    auto log_handler = [](void* user_data, const logging::logger::Message&)
+    {
+        auto* state             = reinterpret_cast<CallbackState*>(user_data);
+        state->callback_invoked = true;
+    };
+
+    auto on_flush = [](void* user_data)
+    {
+        auto* state             = reinterpret_cast<CallbackState*>(user_data);
+        state->on_flush_invoked = true;
+    };
+
+    auto on_close = [](void* user_data)
+    {
+        auto* state             = reinterpret_cast<CallbackState*>(user_data);
+        state->on_close_invoked = true;
+    };
+
+    ASSERT_NO_THROW(logger::add_callback("callback-outside-locks",
+        log_handler,
+        &state,
+        logger_verbosity_enum::VERBOSITY_INFO,
+        on_close,
+        on_flush));
+
+    LOGGING_LOG_INFO("test-message");
+    logger::flush();
+
+    EXPECT_TRUE(state.callback_invoked) << "Callback should have been invoked";
+    EXPECT_TRUE(state.on_flush_invoked) << "on_flush callback should have been invoked";
+
+    ASSERT_NO_THROW(logger::remove_callback("callback-outside-locks"));
+    EXPECT_TRUE(state.on_close_invoked) << "on_close callback should have been invoked";
 #endif
 }
 

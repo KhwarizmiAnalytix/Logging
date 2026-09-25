@@ -32,7 +32,9 @@ std::atomic<bool> g_console_mode{true};
 const char* basename_from_path(const char* fname)
 {
     if (fname == nullptr)
+    {
         return "";
+    }
     const char* filename = fname;
     for (const char* p = fname; *p != '\0'; ++p)
     {
@@ -125,23 +127,30 @@ std::string format_line(
 void ensure_parent_directory(const char* path)
 {
     if (path == nullptr)
+    {
         return;
+    }
 
     std::string dir(path);
     size_t      pos = dir.find_last_of("/\\");
     if (pos == std::string::npos)
+    {
         return;
+    }
 
     dir = dir.substr(0, pos);
     if (dir.empty())
+    {
         return;
+    }
 
     try
     {
         std::filesystem::create_directories(dir);
     }
-    catch (...)
+    catch (const std::exception&)
     {
+        // Ignore directory creation failures
     }
 }
 
@@ -375,15 +384,12 @@ void NativeBackend::shutdown()
 
 void NativeBackend::set_thread_name(std::string_view name)
 {
-    if (name.size() >= sizeof(g_thread_name))
+    const size_t copy_size = std::min(name.size(), sizeof(g_thread_name) - 1);
+    if (copy_size > 0)
     {
-        std::strncpy(g_thread_name, name.data(), sizeof(g_thread_name) - 1);
-        g_thread_name[sizeof(g_thread_name) - 1] = '\0';
+        std::memcpy(g_thread_name, name.data(), copy_size);
     }
-    else
-    {
-        std::strcpy(g_thread_name, name.data());
-    }
+    g_thread_name[copy_size] = '\0';
 }
 
 std::unique_ptr<Backend> create_native_backend()
