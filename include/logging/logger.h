@@ -202,27 +202,33 @@ private:
  * Key-value field helper for structured logging.
  * Usage: LOG_INFO_KV("event_name", kv("user_id", 123), kv("amount", 45.67))
  */
-inline field kv(std::string_view key, int64_t value) {
+inline field kv(std::string_view key, int64_t value)
+{
     return {key, value};
 }
 
-inline field kv(std::string_view key, double value) {
+inline field kv(std::string_view key, double value)
+{
     return {key, value};
 }
 
-inline field kv(std::string_view key, std::string_view value) {
+inline field kv(std::string_view key, std::string_view value)
+{
     return {key, value};
 }
 
-inline field kv(std::string_view key, bool value) {
+inline field kv(std::string_view key, bool value)
+{
     return {key, value};
 }
 
-inline field kv(std::string_view key, const std::string& value) {
+inline field kv(std::string_view key, const std::string& value)
+{
     return {key, std::string_view(value)};
 }
 
-inline field kv(std::string_view key, const char* value) {
+inline field kv(std::string_view key, const char* value)
+{
     return {key, std::string_view(value ? value : "")};
 }
 
@@ -313,15 +319,17 @@ inline field kv(std::string_view key, const char* value) {
 #define LOGGING_LOG_FATAL(format_string, ...) LOGGING_LOG(critical, format_string, ##__VA_ARGS__)
 
 // Structured logging macros (Phase D: kv() fields alongside formatted message)
-#define LOGGING_LOG_KV(verbosity_name, message, ...)                                                 \
-    do                                                                                               \
-    {                                                                                                \
-        if (static_cast<int>(logging::level::verbosity_name) <=                                      \
-            static_cast<int>(logging::logger::get_current_verbosity_cutoff()))                       \
-        {                                                                                            \
-            logging::logger::log(logging::level::verbosity_name, __FILE__, __LINE__,                 \
-                logging::strings::format(message).c_str());                                          \
-        }                                                                                            \
+#define LOGGING_LOG_KV(verbosity_name, message, ...)                                               \
+    do                                                                                             \
+    {                                                                                              \
+        if (static_cast<int>(logging::level::verbosity_name) <=                                    \
+            static_cast<int>(logging::logger::get_current_verbosity_cutoff()))                     \
+        {                                                                                          \
+            logging::logger::log(logging::level::verbosity_name,                                   \
+                __FILE__,                                                                          \
+                __LINE__,                                                                          \
+                logging::strings::format(message).c_str());                                        \
+        }                                                                                          \
     } while (0)
 
 #define LOGGING_LOG_INFO_KV(message, ...) LOGGING_LOG_KV(info, message, ##__VA_ARGS__)

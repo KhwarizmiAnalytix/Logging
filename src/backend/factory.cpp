@@ -1,9 +1,12 @@
 #include "include/logging/backend.h"
 
-namespace logging {
-namespace backend {
+namespace logging
+{
+namespace backend
+{
 
-std::unique_ptr<Backend> create_backend() {
+std::unique_ptr<Backend> create_backend()
+{
 #if LOGGING_HAS_NATIVE
     return create_native_backend();
 #elif LOGGING_HAS_SPDLOG

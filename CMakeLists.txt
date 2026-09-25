@@ -443,11 +443,14 @@ endif()
 # --- Explicit source and header lists (Phase B: replacing glob pattern) ---
 # Headers: Public API and internal headers
 set(logging_headers
-  # Public headers - new location (Phase A)
+  # Public headers - new location (Phase A-C)
   include/logging/level.h
   include/logging/logger.h
   include/logging/logging.h
   include/logging/backend.h
+  include/logging/dispatcher.h
+  include/logging/source_location.h
+  include/logging/log.h
   include/logging/exception.h
   include/logging/string_util.h
   include/logging/back_trace.h
@@ -482,6 +485,8 @@ set(logging_sources
   src/backend/loguru_backend.cpp
   src/backend/glog_backend.cpp
   src/backend/factory.cpp
+  # Dispatcher layer (Phase B)
+  src/logger_dispatcher.cpp
 )
 
 # --- Target definition ---

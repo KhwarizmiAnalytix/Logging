@@ -733,8 +733,9 @@ logger_verbosity_enum logger::internal_verbosity_level_    = logger_verbosity_en
 
 // Phase D: Thread-local reentrancy guard for callback dispatch
 // Prevents recursive callback invocation when logging from within a callback
-namespace {
-    thread_local bool g_in_user_callback = false;
+namespace
+{
+thread_local bool g_in_user_callback = false;
 }
 
 logger::logger() = default;
