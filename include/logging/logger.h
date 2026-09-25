@@ -110,6 +110,11 @@ public:
         std::string prefix;
         std::string message;
 
+        // Extended metadata (Phase F)
+        std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::now();
+        unsigned long thread_id = 0;
+        std::string thread_name;
+
         // Deprecated: backward compatibility
         logger_verbosity_enum verbosity_deprecated() const
         {

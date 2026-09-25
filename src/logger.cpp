@@ -1,6 +1,7 @@
 #include "include/logger/logger.h"
 #include "include/logging/structured.h"
 #include "include/logging/level.h"
+#include "include/logging/config.h"
 
 #include <fmt/format.h>
 
