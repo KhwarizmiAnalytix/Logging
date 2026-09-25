@@ -745,7 +745,7 @@ static void loguru_pop_scope(const char* id)
 }  // namespace detail
 
 //=============================================================================
-bool                  logger::enable_unsafe_signal_handler = true;
+bool                  logger::enable_unsafe_signal_handler = false;
 bool                  logger::enable_sigabrt_handler       = false;
 bool                  logger::enable_sigbus_handler        = false;
 bool                  logger::enable_sigfpe_handler        = false;
@@ -1261,6 +1261,8 @@ void logger::add_callback(const char* id,
 #elif LOGGING_HAS_NATIVE
     internal::native_add_callback(id, callback, user_data, verbosity, on_close, on_flush);
 #elif LOGGING_HAS_GLOG
+    // glog backend does not support custom callbacks. Use traits from
+    // backend_traits.h to check capability at compile time.
     (void)id;
     (void)callback;
     (void)user_data;
