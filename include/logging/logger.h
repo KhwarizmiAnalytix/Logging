@@ -195,6 +195,37 @@ protected:
 private:
     static level internal_verbosity_level_;
 };
+
+// ===== Structured logging helpers (Phase D) =====
+
+/**
+ * Key-value field helper for structured logging.
+ * Usage: LOG_INFO_KV("event_name", kv("user_id", 123), kv("amount", 45.67))
+ */
+inline field kv(std::string_view key, int64_t value) {
+    return {key, value};
+}
+
+inline field kv(std::string_view key, double value) {
+    return {key, value};
+}
+
+inline field kv(std::string_view key, std::string_view value) {
+    return {key, value};
+}
+
+inline field kv(std::string_view key, bool value) {
+    return {key, value};
+}
+
+inline field kv(std::string_view key, const std::string& value) {
+    return {key, std::string_view(value)};
+}
+
+inline field kv(std::string_view key, const char* value) {
+    return {key, std::string_view(value ? value : "")};
+}
+
 }  // namespace logging
 
 // Fmt-style logging macros (printf-style removed)
@@ -280,6 +311,22 @@ private:
 #define LOGGING_LOG_WARNING(format_string, ...) LOGGING_LOG(warn, format_string, ##__VA_ARGS__)
 #define LOGGING_LOG_ERROR(format_string, ...) LOGGING_LOG(error, format_string, ##__VA_ARGS__)
 #define LOGGING_LOG_FATAL(format_string, ...) LOGGING_LOG(critical, format_string, ##__VA_ARGS__)
+
+// Structured logging macros (Phase D: kv() fields alongside formatted message)
+#define LOGGING_LOG_KV(verbosity_name, message, ...)                                                 \
+    do                                                                                               \
+    {                                                                                                \
+        if (static_cast<int>(logging::level::verbosity_name) <=                                      \
+            static_cast<int>(logging::logger::get_current_verbosity_cutoff()))                       \
+        {                                                                                            \
+            logging::logger::log(logging::level::verbosity_name, __FILE__, __LINE__,                 \
+                logging::strings::format(message).c_str());                                          \
+        }                                                                                            \
+    } while (0)
+
+#define LOGGING_LOG_INFO_KV(message, ...) LOGGING_LOG_KV(info, message, ##__VA_ARGS__)
+#define LOGGING_LOG_WARNING_KV(message, ...) LOGGING_LOG_KV(warn, message, ##__VA_ARGS__)
+#define LOGGING_LOG_ERROR_KV(message, ...) LOGGING_LOG_KV(error, message, ##__VA_ARGS__)
 
 /**
  * Start / stop a log file at the current verbosity cutoff. `file_name` may be
