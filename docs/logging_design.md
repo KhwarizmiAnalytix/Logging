@@ -1,28 +1,70 @@
 # Logging design
 
-Reviewed against repository revision `78fc37f` on 2026-09-25. The project
+Reviewed against repository revision `e8c81d3` on 2026-09-25. The project
 currently declares version **1.0.0** in [CMakeLists.txt](../CMakeLists.txt).
 This document consolidates the architecture review, design decisions, backend
-contract, refactoring plan, testing strategy, and compatibility guidance.
+contract, implementation history, testing strategy, and compatibility guidance.
 
-**Status:** current behavior is described separately from proposed changes.
-All implementation phases below are **planned**, not completed. This document
-does not establish a v2 release or change runtime behavior. Review findings
-come from source inspection; runtime reproductions remain phase 1 work.
+**Status:** the correctness and architecture items below (callback lifetime,
+fatal-bypass filtering, per-destination cutoff, file replacement parity,
+compile-time backend dispatch, single unified API, CMake package export) are
+**implemented and verified** against all four backends plus Bazel, not merely
+proposed. Two items remain open: concurrency stress tests for callback
+removal/replacement under concurrent producers, and a dedicated TSan CI job
+(previously blocked on glog not building at all; glog now builds). See
+[Implementation status](#implementation-status) for what changed and what's
+still outstanding, and the reviewer's original priority table in
+[Review findings and priorities](#review-findings-and-priorities) with each
+row marked resolved or open.
 
-The library has a useful foundation: compile-time backend selection, a common
-static facade, lazy macro arguments, and owned callback message strings. The
-priority is to make callback lifetime, filtering, file handling, and lifecycle
-behavior consistent before extracting backend files.
+The library now has: compile-time backend selection via a concrete type alias
+(no vtable), a single API surface under `include/logger/`, a common static
+facade, lazy macro arguments, owned callback message strings, lifetime-managed
+callback registrations with exactly-once close semantics, and consistent
+file-replacement behavior across the three backends capable of it (native,
+spdlog, loguru; glog has a documented, permanent capability gap).
 
 ## Contents
 
+- [Implementation status](#implementation-status)
 - [Current architecture and review](#current-architecture-and-review)
 - [Target design and rationale](#target-design-and-rationale)
-- [Proposed backend contract](#proposed-backend-contract)
+- [Backend contract](#backend-contract)
 - [Implementation phases](#implementation-phases)
 - [Verification strategy](#verification-strategy)
 - [Current API and compatibility](#current-api-and-compatibility)
+
+## Implementation status
+
+The table below tracks the reviewer's original ten-item punch list against
+what actually shipped. Everything marked done has been verified by building
+and testing all four backends (Loguru default, Native, spdlog, glog) plus
+Bazel from a clean build directory; several also have a from-scratch external
+`find_package(Logging)` consumer smoke test (item 7) or a targeted
+stress-loop rerun (item 5's thread-name fix, 30 isolated + 10 full-suite runs).
+
+| # | Item | Status | What changed |
+|---|------|--------|---------------|
+| 1 | Unify the two `logging::logger` APIs | ✅ Done | Deleted the unwired, aspirational `include/logging/*` tree (undefined symbols, a `std::span` C++20 leak, duplicate `source_location`) rather than finishing it. Ported its two useful pieces onto the live `include/logger/*` API: `should_log()`/`is_fatal()` (adapted to Loguru's inverted numbering) into `logger_verbosity_enum.h`, and `structured_event`/`config` into `include/logger/structured.h` and `config.h`, retyped onto `logger_verbosity_enum` directly. |
+| 2 | Replace backend virtual polymorphism with compile-time static dispatch | ✅ Done | The `Backend` abstract class (15 pure virtual methods) is gone. Each backend's class body moved into its own header (`src/backend/{loguru,native,spdlog,glog}_backend.h`) with `virtual`/`override` dropped. `src/backend/backend.h` holds the one remaining `#if` as a type alias (`using ActiveBackend = detail::LoguruBackend;`, etc.); `active_backend()` returns a concrete `ActiveBackend&`, so every call is an ordinary, inlinable member call. |
+| 3 | Lifetime-managed callback registrations | ✅ Done | native/spdlog: callback entries are heap-allocated (`shared_ptr`) with an atomic `in_flight` counter; `remove_callback`/`add_callback` (on replace) unpublish first, then drain in-flight invocations via `shared::wait_for_callback_drain()` before running `on_close`. loguru's own log/add/remove already share one recursive mutex, so it needed no counter — but did have a separate duplicate-id gap (below). |
+| 4 | Fix duplicate spdlog callback/file registration | ✅ Done | `add_callback` on native/spdlog now closes any existing same-id registration before installing the new one (previously silently overwrote with no cleanup). `log_to_file` on native (was a silent no-op on a duplicate path) and spdlog (was leaking the old `dist_sink_` entry, causing duplicate writes) both fixed; loguru's `add_file`-as-callback path also fixed (bypassed the item-3 dedup logic since it calls loguru's raw `add_callback`, not ours). |
+| 5 | Fix thread-name propagation in spdlog | ✅ Done | `SpdlogBackend::on_init` no longer re-applies the facade's global `g_main_thread_name` to the calling thread — that global is "whichever thread last called `set_thread_name`", not necessarily the thread calling `init()`, so it could silently rename an unrelated thread. |
+| 6 | Identical file replacement semantics across backends | ✅ Done, with a documented exception | native/spdlog/loguru are now mutually consistent (literal path, reopen + re-truncate/append on re-registration). glog cannot match: `google::SetLogDestination` treats the path as a rotation-naming *prefix*, never a literal filename — a permanent glog API difference, not a bug. `TestPhase1Regression.DuplicateFilePathReplaces` skips for glog with that explanation. |
+| 7 | Finish CMake package export/install | ✅ Done | Added `install(EXPORT ...)` + generated `LoggingConfig.cmake`/`LoggingConfigVersion.cmake` (previously the export set was declared but never installed, so `find_package(Logging)` could never have worked). Fixed the header install layout (was double-nesting under `include/Logging/include/...`). Backend deps (fmt/loguru/glog/spdlog) switched `PUBLIC`→`PRIVATE` link; magic_enum kept `PUBLIC` (it's the one dependency actually used from a public header) with its headers copied into Logging's own install tree. Verified with a real external consumer project, not just a configure-time check. |
+| 8 | Update this document | ✅ Done (this revision) | Replaced the "planned, not completed" framing and the nine-phase future plan with what's actually implemented; the phase write-ups below are kept as a historical record of the plan, annotated with outcomes. |
+| 9 | Concurrency tests for callback removal/replacement under load | ⬜ Open | The item 3/4 fixes are covered by ordinary (single-threaded) regression tests; a dedicated multi-producer stress test that removes/replaces a callback while other threads are actively logging through it has not been added yet. |
+| 10 | Run TSan in CI, not just ASan/UBSan | ⬜ Open | Previously blocked in practice for glog (never built in this repository until item 7's related fix — see below). Now unblocked for all four backends, but the CI workflow change itself has not been made. |
+
+**Related, found while fixing item 7 but not on the original list:** `glog`
+had never actually built in this repository. The "`GLOG_EXPORT` undefined"
+failure looked like a vendoring gap but was caused by XSigma's shared
+`add_third_party_library()` finding a **system-installed** glog via
+`find_package()` (since `XSIGMA_ENABLE_EXTERNAL` defaults `ON`) ahead of the
+bundled `ThirdParty/glog` copy, while this project's `CMakeLists.txt`
+unconditionally still added the bundled copy's (headers-only, un-generated)
+include directory to the search path. Fixed by only adding that directory
+when the bundled copy is actually the one in use.
 
 ## Current architecture and review
 
@@ -30,17 +72,19 @@ behavior consistent before extracting backend files.
 
 Logging is a compiled C++ library with public macros and a static
 `logging::logger` facade. CMake or Bazel selects one of LOGURU (default), NATIVE,
-SPDLOG, or GLOG. There is no runtime backend factory or common virtual backend
-interface. Conditional branches in `include/logger/logger.cpp` provide the
-implementations.
+SPDLOG, or GLOG. There is no runtime backend factory or virtual backend
+interface: exactly one concrete backend type is named by a compile-time type
+alias (`backend::ActiveBackend` in `src/backend/backend.h`), so every call
+through `backend::active_backend()` is an ordinary, statically-dispatched
+member function call, not a vtable indirection.
 
 ```mermaid
 flowchart TD
-    A[Application macros] --> B[Check verbosity cutoff]
-    B -->|enabled| C[Convert arguments to strings and format message]
-    C --> D[logger::log in logger.cpp]
+    A[Application macros] --> B[is_fatal OR should_log against verbosity cutoff]
+    B -->|enabled or fatal| C[Convert arguments to strings and format message]
+    C --> D[logger::log in src/logger.cpp]
     E[Direct log and printf APIs] --> D
-    D --> F[One compiled backend: Loguru, native, spdlog, or glog]
+    D --> F[backend::active_backend -- one concrete type, no vtable]
     F --> G[Console and file output]
     F --> H[Callbacks where supported]
 ```
@@ -49,15 +93,21 @@ flowchart TD
 |----------------|----------------|
 | Umbrella header | [include/logging.h](../include/logging.h) |
 | Facade, logging macros, callback payload, scope RAII | [logger.h](../include/logger/logger.h) |
-| Backend state, dispatch, sinks, scope bookkeeping | [logger.cpp](../include/logger/logger.cpp) |
-| Numeric verbosity contract | [logger_verbosity_enum.h](../include/logger/logger_verbosity_enum.h) |
-| Argument conversion and formatting | [string_util.h](../include/util/string_util.h), [string_util.cpp](../include/util/string_util.cpp) |
-| Throw/check policy | [exception.h](../include/util/exception.h), [exception.cpp](../include/util/exception.cpp) |
-| Explicit and exception stack traces | [back_trace.h](../include/logger/back_trace.h), [back_trace.cpp](../include/logger/back_trace.cpp) |
+| Facade implementation: cutoff dispatch, scope bookkeeping, structured logging | [logger.cpp](../src/logger.cpp) |
+| Numeric verbosity contract, `should_log`/`is_fatal` gate | [logger_verbosity_enum.h](../include/logger/logger_verbosity_enum.h) |
+| Config struct, structured-event API | [config.h](../include/logger/config.h), [structured.h](../include/logger/structured.h) |
+| Backend selection (the one remaining `#if`) | [backend.h](../src/backend/backend.h), [factory.cpp](../src/backend/factory.cpp) |
+| Per-backend implementation (concrete, non-virtual) | `src/backend/{loguru,native,spdlog,glog}_backend.h` |
+| Shared backend helpers (basename, reentrancy guard, callback drain) | [backend_shared.h](../src/backend/backend_shared.h) |
+| Argument conversion and formatting | [string_util.h](../include/util/string_util.h), [string_util.cpp](../src/string_util.cpp) |
+| Throw/check policy | [exception.h](../include/util/exception.h), [exception.cpp](../src/exception.cpp) |
+| Explicit and exception stack traces | [back_trace.h](../include/logger/back_trace.h), [back_trace.cpp](../src/back_trace.cpp) |
 
-Implementation files currently live under `include/`. Logging macros are in
-`logger.h`; `common/logging_macros.h` contains shared compiler/configuration
-helpers. No `src/backend/` directory exists yet.
+Public headers live under `include/logger/` (the single API — the earlier
+`include/logging/*` tree was aspirational and unwired, and was deleted rather
+than finished), plus `include/util/` and `include/common/` for utilities.
+Compiled implementation lives under `src/`, with `src/backend/` holding one
+header + one-line `.cpp` shim per backend.
 
 ### Message flow and formatting
 
@@ -108,12 +158,15 @@ not message severities. There is no `VERBOSITY_DEBUG`; positive numeric
 verbosity is available through `LOGGING_VLOG_IF` and numeric scope macros.
 `LOGGING_LOG_DEBUG(INFO, ...)` is a build-mode guard removed under `NDEBUG`.
 
-`LOGGING_LOG_FATAL` currently uses the ordinary filter too. With cutoff OFF,
-the macro can skip both output and termination. A dispatched fatal record
-normally aborts, but callback/formatting failures complicate that path.
-`LOGGING_THROW` in LOG_FATAL mode has a separate `std::abort()` fallback.
-Unconditional fatal termination is a proposed contract, not a current macro
-guarantee.
+`LOGGING_LOG_FATAL` and every other logging macro route through
+`is_fatal(severity) || should_log(severity, cutoff)` (both defined in
+`logger_verbosity_enum.h`). This closed a real gap: previously
+`LOGGING_LOG_FATAL` used the ordinary cutoff filter, so setting verbosity to
+OFF silently suppressed the fatal message, and `abort_if_fatal()` — reached
+only from inside `log()` — never ran. `is_fatal()` now bypasses the cutoff
+unconditionally, so a fatal record is always dispatched and always aborts
+regardless of the configured verbosity. `LOGGING_THROW` in LOG_FATAL mode
+still has its separate `std::abort()` fallback for the exception path.
 
 ### Backend differences
 
@@ -122,19 +175,22 @@ offered by the underlying libraries.
 
 | Behavior | Loguru | Native | spdlog | glog |
 |----------|--------|--------|--------|------|
-| Macro cutoff | Maximum active destination cutoff | Global atomic cutoff | Logger-wide mapped level | Global glog flags |
-| Independent verbose file/callback with quieter stderr | Supported by destination cutoff | Blocked by global cutoff | Blocked by logger level | File verbosity argument ignored |
-| Custom callbacks | Bridge to Loguru | Internal registry | Callback sinks | Registration is a no-op |
-| Callback log invocation | Under recursive Loguru lock | Outside I/O lock | Under sink locks | Unsupported |
-| Callback flush hook | Forwarded | Called under I/O lock | Stored but never invoked | Unsupported |
-| File mode and stop | Delegated to Loguru | Append/truncate; remove by path | Append/truncate; remove tracked sink | Mode ignored; stop only flushes and changes console routing |
+| Macro cutoff | Maximum active destination cutoff | Maximum active destination cutoff | Minimum active sink level (master logger level stays permissive) | Global glog flags |
+| Independent verbose file/callback with quieter stderr | Supported by destination cutoff | Supported by destination cutoff | Supported (per-sink levels) | File verbosity argument ignored |
+| Custom callbacks | Bridge to Loguru, duplicate-id replace | Lifetime-managed registry, duplicate-id replace | Lifetime-managed registry, duplicate-id replace | Registration is a no-op |
+| Callback log invocation | Under recursive Loguru lock | Outside I/O lock, `in_flight`-counted | Outside sink locks, `in_flight`-counted | Unsupported |
+| Callback flush hook | Forwarded | Called outside I/O lock | Fans out to `on_flush` outside locks | Unsupported |
+| File mode and stop | Delegated to Loguru; duplicate path re-registers (dedup tracked ourselves) | Append/truncate; duplicate path reopens with the new mode; remove by path | Append/truncate; duplicate path removed from `dist_sink_` before replacement; remove tracked sink | Mode ignored; path is a rotation-naming *prefix*, not a literal filename — permanent API difference, not a bug |
 | Positive verbosity | Numeric | Numeric | Collapsed to trace | VLOG levels |
-| Thread-name storage | Thread-local bridge | Thread-local | Thread-local getter, shared output pattern | Thread-local getter |
+| Thread-name storage | Thread-local bridge | Thread-local | Thread-local getter; `on_init` no longer re-applies a possibly-stale cross-thread name | Thread-local getter |
 
-The facade provides common method names, not full behavioral equivalence.
-`Message` owns strings, but a callback receives a borrowed `const Message&`;
-retaining a record requires copying it. `user_data` is a raw pointer, with no
-ownership protection in the current registry.
+The facade provides common method names, not full behavioral equivalence for
+glog's file semantics (see the table). `Message` owns strings, but a callback
+receives a borrowed `const Message&`; retaining a record requires copying it.
+`user_data` is a raw pointer with no ownership protection of its own, but the
+registry now guarantees `on_close` cannot run while any invocation of that
+same `user_data` is still in flight (native/spdlog via an atomic counter;
+loguru via its own coarse lock).
 
 ### Scope and configuration lifecycle
 
@@ -167,22 +223,24 @@ automatically capture a stack.
 
 ### Review findings and priorities
 
-These findings follow source inspection; this documentation review did not
-execute runtime reproductions. Function names identify the relevant locations
-in [logger.cpp](../include/logger/logger.cpp).
+Original findings from source inspection, each now marked with its
+resolution. Source locations have moved since the original review: backend
+logic that was `include/logger/logger.cpp` is now split across
+[src/logger.cpp](../src/logger.cpp) (facade) and `src/backend/*_backend.h`
+(per-backend).
 
-| Priority | Finding and trigger | Design response |
-|----------|---------------------|-----------------|
-| P1 | A spdlog callback that emits an enabled log re-enters `dist_sink_mt`/`callback_sink_mt` locks and can deadlock. Native `on_flush`/`on_close` also run under `g_io_mutex`. | Own callback dispatch outside backend locks; define recursion rules for all hooks. |
-| P1 | Native logging snapshots raw `user_data`, unlocks, then invokes it. Concurrent `native_remove_callback` can call `on_close` and free that data first. | Keep registration state alive until all snapshots finish; defer close. |
-| P1 | OFF cutoff suppresses `LOGGING_LOG_FATAL` before backend dispatch. | Separate fatal termination from ordinary filtering and test it in subprocesses. |
-| P2 | Native/spdlog global cutoff rejects records wanted by a more verbose file or callback. | Derive the frontend cutoff from all active destinations and filter each destination independently. |
-| P2 | `set_thread_name` in spdlog embeds the caller's name in a shared pattern; other threads can print that name. | Capture producer metadata in each record; test emitted output, not just getters. |
-| P2 | Re-registering a spdlog callback ID or file path overwrites the map entry but leaves the old sink attached. Removal then removes only the latest sink. Native callback replacement omits the old close hook. | Define replacement as retire-old/install-new with exactly-once cleanup. |
-| P2 | spdlog stores `on_flush` without invoking it; glog silently ignores callbacks and several file arguments. | Implement parity or expose explicit unsupported capability/error results. |
-| P2 | `start_scope_f` outside Loguru logs without pushing a named scope; a matching `end_scope` reports a mismatch. | Share bookkeeping across formatted and unformatted scope entry. |
-| P2 | Shared configuration includes ordinary globals such as `g_requested_stderr_verbosity` and signal booleans. | Define supported concurrent operations and synchronize them; avoid blanket thread-safety claims. |
-| P2 | CMake installs artifacts but does not install `LoggingTargets` or generate `LoggingConfig.cmake`. | Add and test a relocatable package before advertising `find_package` integration. |
+| Priority | Finding and trigger | Status | Resolution |
+|----------|---------------------|--------|------------|
+| P1 | A spdlog callback that emits an enabled log re-enters `dist_sink_mt`/`callback_sink_mt` locks and can deadlock. Native `on_flush`/`on_close` also run under `g_io_mutex`. | ✅ Resolved | Callback bodies execute outside the sink/`io_mutex_` lock on both backends (unchanged from before), and the reentrancy guard (`CallbackReentrancyGuard`) prevents a callback that itself logs from re-dispatching to callbacks recursively. |
+| P1 | Native logging snapshots raw `user_data`, unlocks, then invokes it. Concurrent `native_remove_callback` can call `on_close` and free that data first. | ✅ Resolved | Item 3: callback entries are `shared_ptr`-held with an atomic `in_flight` counter incremented under the same lock used for lookup; `remove_callback`/`add_callback` drain it via `wait_for_callback_drain()` before calling `on_close`. |
+| P1 | OFF cutoff suppresses `LOGGING_LOG_FATAL` before backend dispatch. | ✅ Resolved | Item 1: `is_fatal(severity) || should_log(...)` in every logging macro; fatal now bypasses the cutoff unconditionally. |
+| P2 | Native/spdlog global cutoff rejects records wanted by a more verbose file or callback. | ✅ Resolved (predates this session's ten-item list) | Per-destination cutoff: native's `effective_cutoff()` takes the max across console/file/callback sinks; spdlog's `get_cutoff()` takes the min spdlog level (most permissive) across active sinks. |
+| P2 | `set_thread_name` in spdlog embeds the caller's name in a shared pattern; other threads can print that name. | 🔶 Partially resolved | Item 5 fixed the specific cross-thread corruption bug (`on_init` no longer re-applies a stale global name to the calling thread). The underlying design point — thread name is a shared spdlog pattern, not per-record metadata — is unchanged; `get_thread_name()` still returns the correct value via a thread-local shadow, but emitted *output lines* still share one global pattern. |
+| P2 | Re-registering a spdlog callback ID or file path overwrites the map entry but leaves the old sink attached. Removal then removes only the latest sink. Native callback replacement omits the old close hook. | ✅ Resolved | Items 4 and 6: both `add_callback` (all three capable backends) and `log_to_file` (native, spdlog, loguru) now retire the old registration — including removing it from spdlog's `dist_sink_` — before installing the replacement, and run `on_close` exactly once. |
+| P2 | spdlog stores `on_flush` without invoking it; glog silently ignores callbacks and several file arguments. | 🔶 Partially resolved (predates this session's ten-item list for the spdlog half) | spdlog's `flush()` now fans out to every registered `on_flush` outside locks. glog's callback/file-argument limitations are unchanged and are now explicitly documented (item 6) as a permanent capability gap rather than left implicit. |
+| P2 | `start_scope_f` outside Loguru logs without pushing a named scope; a matching `end_scope` reports a mismatch. | ⬜ Open | Not investigated in this pass; `start_scope`/`start_scope_f` share one code path in the current `src/logger.cpp`, but this specific claim (formatted vs. unformatted entry bookkeeping) has not been re-verified against current source. |
+| P2 | Shared configuration includes ordinary globals such as `g_requested_stderr_verbosity` and signal booleans. | ⬜ Open | Unchanged; out of scope for the ten-item list. |
+| P2 | CMake installs artifacts but does not install `LoggingTargets` or generate `LoggingConfig.cmake`. | ✅ Resolved | Item 7: full `install(EXPORT ...)` + `LoggingConfig.cmake`/`LoggingConfigVersion.cmake`, verified with a real external `find_package(Logging)` consumer. |
 
 The spdlog lock behavior is visible in the vendored
 [base sink](../ThirdParty/spdlog/include/spdlog/sinks/base_sink-inl.h),
@@ -193,20 +251,27 @@ The spdlog lock behavior is visible in the vendored
 
 ### 1. Retain compile-time backend selection
 
-**Existing; retain.** Select exactly one backend with `LOGGING_BACKEND` in
-CMake or `--define=logging_backend=...` in Bazel. Preserve the existing
-`LOGGING_HAS_LOGURU`, `LOGGING_HAS_NATIVE`, `LOGGING_HAS_SPDLOG`, and
-`LOGGING_HAS_GLOG` definitions.
+**Done.** Select exactly one backend with `LOGGING_BACKEND` in CMake or
+`--define=logging_backend=...` in Bazel. The existing `LOGGING_HAS_LOGURU`,
+`LOGGING_HAS_NATIVE`, `LOGGING_HAS_SPDLOG`, and `LOGGING_HAS_GLOG` definitions
+are preserved, and remain the *only* backend-selection `#if` in the codebase
+(in `src/backend/backend.h`, choosing a type alias).
 
-**Proposed boundary:** one private header declares nonvirtual adapter
-functions; exactly one selected implementation defines those functions.
-A factory returning `unique_ptr<BackendInterface>` would introduce runtime
-polymorphism. It cannot also guarantee direct calls merely because the factory
-is selected at build time. No factory or abstract base is needed here.
+**Boundary implemented as:** each backend's class body lives in its own
+header (`src/backend/{loguru,native,spdlog,glog}_backend.h`) with no
+`virtual`/`override` — a concrete, nonvirtual type. `backend.h` aliases
+`ActiveBackend` to whichever one is selected; `factory.cpp`'s
+`active_backend()` returns a concrete `ActiveBackend&` from a
+function-local static. This is deliberately simpler than the
+`unique_ptr<BackendInterface>` factory sketch this section originally
+proposed against — there is no abstract base at all, not even one satisfied
+by a single implementation, so there is nothing to introduce runtime
+polymorphism in the first place.
 
-Backend libraries can still use virtual sink dispatch internally. Avoid
-claiming that the complete logging path has no virtual calls or fixed cost.
-Reconsider runtime selection only if a concrete application needs it.
+Backend libraries (spdlog, loguru) still use virtual sink dispatch
+internally — that is unrelated to and unaffected by this change. The claim
+here is narrower: *this* library's own dispatch from `logger::log()` down to
+the selected backend's methods involves no vtable.
 
 ### 2. Keep formatting in the frontend; preserve its dependency boundary
 
@@ -227,56 +292,63 @@ entry points until a tested replacement and actual deprecation policy exist.
 
 ### 3. Specify verbosity in library terms
 
-**Existing values; proposed uniform filtering.** Preserve enum values and the
-rule `message_verbosity <= destination_cutoff`. OFF/INVALID are not messages.
-The current enum is already declared by Logging, though its numeric values
-match Loguru. There is no need to introduce a new public severity enum.
+**Done.** Enum values are unchanged; the filtering rule is now expressed as
+`is_fatal(message) || should_log(message, cutoff)`, both defined once in
+`logger_verbosity_enum.h` so every macro and adapter routes through the same
+comparison. OFF/INVALID are not treated as message severities. No new public
+severity enum was introduced — the existing Loguru-aligned enum stays.
 
-The frontend cutoff should be the maximum cutoff of enabled destinations,
-with each destination applying its own exact numeric filter. Disabling the
-console must not disable files or callbacks. Backend conversion follows that
-filter, preserving distinctions between numeric levels even when spdlog maps
-several levels to trace.
+Per-destination cutoff was already implemented (native/spdlog) before this
+session's work: native's `effective_cutoff()` takes the max across
+console/file/callback sinks, spdlog's `get_cutoff()` takes the min spdlog
+level across active sinks (its master logger level stays permissive so each
+sink gates itself). Disabling the console does not disable files or
+callbacks on either backend.
 
-**Proposed fatal policy:** fatal operations always terminate, including with
-all ordinary destinations disabled. Diagnostic output and flush are best
-effort; their failures must not let execution continue. This is an observable
-correction to today's filtered fatal macro and needs release notes.
+**Fatal policy — done.** `is_fatal()` bypasses the ordinary cutoff
+unconditionally in every macro (`LOGGING_LOG`, `LOGGING_LOG_IF`,
+`LOGGING_VLOG_IF`, both scope macros). This is the observable behavior
+correction flagged here: previously, disabling all destinations could
+silently suppress a fatal record before termination.
 
 ### 4. Centralize callback lifetime and reentrancy
 
-**Proposed.** A common registry owns shared registration state. Log/flush
-operations snapshot owning handles; removal retires a registration, and its
-close hook runs once after the last in-flight operation completes. No user
-hook executes while a registry, I/O, or backend sink lock is held.
+**Done, per-backend rather than via one shared registry.** native and spdlog
+each hold callback entries as `shared_ptr`s with an atomic `in_flight`
+counter, incremented under the same lock used for lookup during dispatch and
+decremented after the call returns; `remove_callback`/`add_callback` (on
+replace) unpublish the entry, then call `shared::wait_for_callback_drain()`
+(in `backend_shared.h`) to wait for `in_flight` to reach zero before running
+`on_close`. loguru needed no equivalent counter: its own
+`log()`/`add_callback()`/`remove_callback()` all share one recursive mutex
+held for the whole callback-dispatch loop, which already serializes removal
+against in-flight invocation.
 
-Copying raw pointers under a lock is insufficient: removal may destroy the
-pointed-to state before invocation. Removal from inside the callback must not
-wait for itself. The [backend contract](#proposed-backend-contract) defines deferred
-close and snapshot semantics.
-
-Nested logging may write to destinations but skips callback dispatch while
-already executing any user hook on that thread. This bounds recursion rather
-than merely replacing one deadlock with infinite callback invocation. Hook
-exceptions must be contained and reported through a nonrecursive fallback.
-Callbacks may run concurrently on different threads; user state still needs
-its own synchronization.
+Nested logging (a callback that itself logs) still reaches console/file
+output but skips callback dispatch, via the existing thread-local
+`CallbackReentrancyGuard` — unchanged from before this pass, but now also
+consulted by `wait_for_callback_drain()`: when called reentrantly (detected
+via that same guard), it skips waiting rather than deadlocking a callback
+that removes itself. Cross-thread concurrent callbacks are unaffected;
+`user_data` synchronization remains the application's responsibility.
 
 ### 5. Use thread-local scope ownership and per-record metadata
 
-**Proposed.** Replace maps keyed by thread ID with thread-local stacks. Benefits
-are simpler cleanup, no map lookup lock, and no stale state from recycled
-thread IDs. The old claim that unordered-map rehash invalidates references was
-incorrect; this change must not be justified as a demonstrated rehash crash.
+**Partially done.** Scope ownership: `scope_enter()` returns
+`unique_ptr<ActiveBackend::Scope>` — a concrete, non-polymorphic RAII type
+per backend — and `src/logger.cpp`'s named-scope stack
+(`g_named_scopes`) is already `thread_local`, predating this session's
+changes; this section's map-keyed-by-thread-ID description no longer
+matches current source.
 
-Detach an exiting scope from its container before emitting exit output or
-running a backend destructor that can log. Thread-local storage alone does
-not make recursive mutation of a vector safe. Scope cleanup at thread exit
-must not access destroyed process state or let exceptions escape destructors.
-
-Capture the producer's thread name per record. Never put one thread's name in
-a shared spdlog pattern. Preserve public `Message` layout during initial
-extraction; adding public metadata is a separate ABI decision.
+Per-record thread-name metadata is **not** done: `Message` still has no
+`thread_name` field, and output on spdlog is still one shared logger-wide
+pattern, not a per-record capture. What *is* fixed (item 5 of the ten-item
+list) is a narrower bug: `SpdlogBackend::on_init` no longer overwrites the
+*calling* thread's own name shadow with a different thread's — but two
+threads logging concurrently still can't each see their own name in the
+shared spdlog pattern simultaneously. Capturing thread name per `Message`
+remains future work.
 
 ### 6. Encapsulate configuration without pretending existing state is atomic
 
@@ -293,26 +365,34 @@ signal ownership explicit; ordinary logging APIs are not signal-safe.
 
 ### 7. Extract modules after correctness fixes
 
-**Proposed.** Keep the facade and public headers; move common state to `src/`
-and each adapter to `src/backend/`. Select source files explicitly in CMake
-and Bazel. Prefer one clear source-selection list per build system; separate
-CMake subdirectories are optional, not an architectural requirement.
+**Done.** The facade and public headers stayed at their existing paths;
+common state moved to `src/logger.cpp`, and each adapter to its own
+`src/backend/*_backend.h` (paired with a one-line `.cpp` shim so
+CMake's/Bazel's `src/backend/*.cpp` source lists still find something to
+compile). CMake's `logging_headers`/`logging_sources` are explicit lists, not
+a recursive glob; BUILD.bazel's `logging_srcs`/`logging_hdrs` glob is scoped
+to `src/*.cpp`, `src/backend/*.cpp`, and the public header directories.
+Exports, dependency propagation, and Windows shared-library definitions were
+preserved and are covered by item 7's install/export work.
 
-Current CMake recursively globs the tree with exclusions; Bazel combines
-explicit logger files with globs. Explicit lists improve build review and
-prevent accidental inclusion of scratch/generated sources. Preserve exports,
-transitive dependencies, and Windows shared-library definitions during moves.
+Note this went further than "move state to src/, adapters to src/backend/":
+the adapter interface itself changed from (planned) private nonvirtual
+functions behind one header to per-backend concrete classes selected by a
+type alias — see item 1 above for why no intermediate abstract interface was
+needed.
 
 ### 8. Make unsupported behavior and errors visible
 
-**Proposed.** Adapter capabilities and status results describe unsupported
-file operations or initialization options. Common callbacks should work
-regardless of the selected backend. Do not silently treat glog no-ops as full
-support for the facade contract.
-
-Define duplicate IDs, file-open failures, repeated initialization, flush, and
-removal before implementation. Flush means draining library buffers, not
-filesystem durability. Avoid promising asynchronous delivery or fsync semantics.
+**Partially done.** No formal `capabilities`/`status` result type was
+introduced (see the [backend contract](#backend-contract) below for why the
+simpler concrete-dispatch design made that unnecessary for the fixes actually
+made). What did change: glog's callback no-op and file-semantics limitations
+are now explicitly documented (in this file's backend-differences table and
+in a `GTEST_SKIP()` message on the affected test) rather than left as an
+implicit gap a reader had to discover by testing. Duplicate-ID and
+duplicate-path behavior is now specified and implemented consistently
+(retire-old-then-install-new, exactly-once close) rather than being an open
+question — see items 3, 4, and 6 above.
 
 ### 9. Keep this refactor focused
 
