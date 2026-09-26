@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 
+#include "include/common/logging_export.h"
 #include "logger_verbosity_enum.h"
 
 namespace logging
@@ -117,7 +118,7 @@ private:
     std::string                        message_;
     std::map<std::string, std::string> fields_;
 
-    void emit_structured(logger_verbosity_enum lv, const char* fname, unsigned line) const;
+    LOGGING_API void emit_structured(logger_verbosity_enum lv, const char* fname, unsigned line) const;
 };
 
 /**
@@ -127,7 +128,7 @@ private:
  * Example output:
  *   {"event": "payment_processed", "user_id": 12345, "amount": 99.99}
  */
-std::string to_json(const structured_event& event);
+LOGGING_API std::string to_json(const structured_event& event);
 
 /**
  * Key-value format builder - for text backends.
@@ -136,7 +137,7 @@ std::string to_json(const structured_event& event);
  * Example output:
  *   event=payment_processed user_id=12345 amount=99.99
  */
-std::string to_kvpairs(const structured_event& event);
+LOGGING_API std::string to_kvpairs(const structured_event& event);
 
 }  // namespace logging
 #endif  // LOGGING_LOGGER_STRUCTURED_H
