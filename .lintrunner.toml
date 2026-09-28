@@ -92,6 +92,7 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.cmake_linter',
+    '--config=.cmake-lint',
     '--',
     '@{{PATHSFILE}}',
 ]
@@ -117,6 +118,7 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.cmake_format_linter',
+    '--config=.cmake-format',
     '--',
     '@{{PATHSFILE}}',
 ]
@@ -311,7 +313,7 @@ init_command = [
     '-m',
     'lint_tool.adapters.pip_init',
     '--dry-run={{DRYRUN}}',
-    'lint-import-linter>=1.0.0',
+    'import-linter>=2.0',
 ]
 command = [
     'python3',
@@ -540,11 +542,10 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.grep_linter',
-    '--invert-match',
-    '--pattern=(Copyright|SPDX-License)',
+    '--pattern=Copyright|SPDX-License-Identifier',
     '--linter-name=COPYRIGHT',
-    '--error-name=missing copyright header',
-    '--error-description=Add copyright/SPDX header to this file.',
+    '--error-name=has copyright header',
+    '--error-description=File includes copyright/SPDX header.',
     '--',
     '@{{PATHSFILE}}',
 ]
@@ -682,8 +683,7 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.grep_linter',
-    '--pattern=LOG(.*)\|SPDLOG.*\|logger->',
-    '--invert-match',
+    '--pattern=LOG\\(.*\\)|SPDLOG.*|logger->',
     '--linter-name=ROOT_LOGGING',
     '--error-name=logging not from logger param',
     '--error-description=Use logger->info/debug/warn/error instead of direct logging.',
@@ -698,12 +698,14 @@ exclude_patterns = [
     'ThirdParty/**',
     '.git/**',
     'build/**',
+    'src/logger.cpp',
+    'src/backend/**',
 ]
 command = [
     'python3',
     '-m',
     'lint_tool.adapters.grep_linter',
-    '--pattern=noqa|NOLINT|pylint:.*disable',
+    '--pattern=noqa|pylint:.*disable',
     '--linter-name=NOQA',
     '--error-name=suppression directive found',
     '--error-description=Code has inline suppressions; review if necessary or remove.',

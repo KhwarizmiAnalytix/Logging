@@ -1,0 +1,12 @@
+# cmake-format configuration
+---
+line_width: 120
+indent_width: 2
+tab_size: 2
+use_tabs: false
+indent_by_default: true
+column_limit: 120
+max_subargs_per_line: 3
+separate_ctrl_name_with_space: true
+separate_fn_name_with_space: true
+dangle_parens: true
