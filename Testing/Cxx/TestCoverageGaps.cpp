@@ -86,9 +86,8 @@ TEST_F(CoverageGaps, StructuredEventLogging)
 
 TEST_F(CoverageGaps, StructuredEventChaining)
 {
-    auto& result = logging::structured_event("chain")
-                       .add("a", static_cast<int64_t>(1))
-                       .add("b", static_cast<int64_t>(2));
+    logging::structured_event result("chain");
+    result.add("a", static_cast<int64_t>(1)).add("b", static_cast<int64_t>(2));
     EXPECT_EQ(result.fields().size(), 2);
 }
 
