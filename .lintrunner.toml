@@ -153,6 +153,7 @@ exclude_patterns = [
     'build_*/**',
     'bazel-*/**',
     '**/__pycache__/**',
+    'Scripts/iwyu/**',
 ]
 init_command = [
     'python3',
@@ -178,6 +179,7 @@ exclude_patterns = [
     'build/**',
     'build_*/**',
     '__pycache__/**',
+    'Scripts/iwyu/**',
 ]
 init_command = [
     'python3',
@@ -190,6 +192,7 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.mypy_linter',
+    '--config=pyproject.toml',
     '--',
     '@{{PATHSFILE}}',
 ]
@@ -203,6 +206,7 @@ exclude_patterns = [
     'build/**',
     'build_*/**',
     '__pycache__/**',
+    'Scripts/iwyu/**',
 ]
 init_command = [
     'python3',
@@ -215,6 +219,7 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.mypy_linter',
+    '--config=pyproject.toml',
     '--strict',
     '--',
     '@{{PATHSFILE}}',
@@ -254,6 +259,7 @@ exclude_patterns = [
     'build/**',
     'build_*/**',
     '__pycache__/**',
+    'Scripts/iwyu/**',
 ]
 init_command = [
     'python3',
@@ -283,6 +289,7 @@ exclude_patterns = [
     '.git/**',
     'build/**',
     '__pycache__/**',
+    'Scripts/iwyu/**',
 ]
 init_command = [
     'python3',
@@ -295,6 +302,7 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.pyrefly_linter',
+    '--config=pyproject.toml',
     '--',
     '@{{PATHSFILE}}',
 ]
@@ -755,16 +763,16 @@ exclude_patterns = [
     '.git/**',
     'build/**',
     '__pycache__/**',
+    'Scripts/iwyu/**',
 ]
 command = [
     'python3',
     '-m',
     'lint_tool.adapters.grep_linter',
-    '--pattern=no_skip_libs\|no_skip_check',
-    '--invert-match',
+    '--pattern=no_skip_libs|no_skip_check',
     '--linter-name=TYPENOSKIP',
-    '--error-name=type skip not configured',
-    '--error-description=Configure skip settings in mypy config.',
+    '--error-name=type skip configured',
+    '--error-description=File has type skip configuration.',
     '--',
     '@{{PATHSFILE}}',
 ]
