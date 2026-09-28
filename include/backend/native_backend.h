@@ -172,6 +172,7 @@ public:
         const auto open_mode = (mode == logger::file_mode::append)
                                    ? (std::ios::out | std::ios::app)
                                    : (std::ios::out | std::ios::trunc);
+
         const std::scoped_lock guard(io_mutex_);
         for (auto& sink : files_)
         {

@@ -1,8 +1,8 @@
 #include "include/logger/logger.h"
 
+#include "include/backend/backend.h"
 #include "include/logger/config.h"
 #include "include/logger/structured.h"
-#include "include/backend/backend.h"
 
 #include <fmt/format.h>
 
