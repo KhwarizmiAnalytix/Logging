@@ -1,5 +1,5 @@
-#ifndef LOGGING_SRC_BACKEND_BACKEND_TYPES_H
-#define LOGGING_SRC_BACKEND_BACKEND_TYPES_H
+#ifndef LOGGING_INCLUDE_BACKEND_BACKEND_TYPES_H
+#define LOGGING_INCLUDE_BACKEND_BACKEND_TYPES_H
 
 // Shared, backend-agnostic types. No virtual interface here: exactly one
 // concrete backend type is compiled in (selected by backend.h's #if), so the
@@ -31,4 +31,4 @@ struct init_options
 
 }  // namespace backend
 }  // namespace logging
-#endif  // LOGGING_SRC_BACKEND_BACKEND_TYPES_H
+#endif  // LOGGING_INCLUDE_BACKEND_BACKEND_TYPES_H

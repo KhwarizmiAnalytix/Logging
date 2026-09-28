@@ -1,6 +1,6 @@
 
-#ifndef LOGGING_SRC_BACKEND_BACKEND_SHARED_H
-#define LOGGING_SRC_BACKEND_BACKEND_SHARED_H
+#ifndef LOGGING_INCLUDE_BACKEND_BACKEND_SHARED_H
+#define LOGGING_INCLUDE_BACKEND_BACKEND_SHARED_H
 
 #include <atomic>
 #include <cstddef>
@@ -158,4 +158,4 @@ inline bool wait_for_callback_drain(const std::atomic<int>& in_flight)
 }  // namespace backend
 }  // namespace logging
 
-#endif  // LOGGING_SRC_BACKEND_BACKEND_SHARED_H
+#endif  // LOGGING_INCLUDE_BACKEND_BACKEND_SHARED_H

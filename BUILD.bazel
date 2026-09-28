@@ -13,7 +13,7 @@ filegroup(
             "include/common/*.h",
             "include/util/*.h",
             "include/logger/*.h",
-            "src/backend/*.h",
+            "include/backend/*.h",
         ],
         allow_empty = True,
     ),

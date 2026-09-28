@@ -490,13 +490,13 @@ set(logging_headers
 
   # Backend implementation headers (private, but listed so IDEs index them).
   # Exactly one concrete backend type is selected at compile time in backend.h.
-  src/backend/backend.h
-  src/backend/backend_types.h
-  src/backend/backend_shared.h
-  src/backend/loguru_backend.h
-  src/backend/native_backend.h
-  src/backend/spdlog_backend.h
-  src/backend/glog_backend.h
+  include/backend/backend.h
+  include/backend/backend_types.h
+  include/backend/backend_shared.h
+  include/backend/loguru_backend.h
+  include/backend/native_backend.h
+  include/backend/spdlog_backend.h
+  include/backend/glog_backend.h
 )
 
 # Sources: Implementation files (only non-test, non-vendor files)

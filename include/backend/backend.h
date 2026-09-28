@@ -1,21 +1,21 @@
-#ifndef LOGGING_SRC_BACKEND_BACKEND_H
-#define LOGGING_SRC_BACKEND_BACKEND_H
+#ifndef LOGGING_INCLUDE_BACKEND_BACKEND_H
+#define LOGGING_INCLUDE_BACKEND_BACKEND_H
 
 // The single remaining compile-time branch: pick the concrete backend type.
 // ActiveBackend is a concrete class (no virtual base, no vtable) so every
 // call through active_backend() is an ordinary, staticly-dispatched member
 // function call -- ripe for inlining, unlike the old Backend-interface
 // design this replaced.
-#include "src/backend/backend_types.h"
+#include "include/backend/backend_types.h"
 
 #if LOGGING_HAS_LOGURU
-#include "src/backend/loguru_backend.h"
+#include "include/backend/loguru_backend.h"
 #elif LOGGING_HAS_NATIVE
-#include "src/backend/native_backend.h"
+#include "include/backend/native_backend.h"
 #elif LOGGING_HAS_SPDLOG
-#include "src/backend/spdlog_backend.h"
+#include "include/backend/spdlog_backend.h"
 #elif LOGGING_HAS_GLOG
-#include "src/backend/glog_backend.h"
+#include "include/backend/glog_backend.h"
 #else
 #error "No logging backend selected"
 #endif
@@ -41,4 +41,4 @@ ActiveBackend& active_backend();
 
 }  // namespace backend
 }  // namespace logging
-#endif  // LOGGING_SRC_BACKEND_BACKEND_H
+#endif  // LOGGING_INCLUDE_BACKEND_BACKEND_H

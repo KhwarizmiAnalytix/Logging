@@ -1,5 +1,5 @@
-#ifndef LOGGING_SRC_BACKEND_LOGURU_BACKEND_H
-#define LOGGING_SRC_BACKEND_LOGURU_BACKEND_H
+#ifndef LOGGING_INCLUDE_BACKEND_LOGURU_BACKEND_H
+#define LOGGING_INCLUDE_BACKEND_LOGURU_BACKEND_H
 
 #include "include/logger/logger.h"
 
@@ -14,8 +14,8 @@
 
 #include <loguru.hpp>
 
-#include "src/backend/backend_shared.h"
-#include "src/backend/backend_types.h"
+#include "include/backend/backend_shared.h"
+#include "include/backend/backend_types.h"
 
 namespace logging
 {
@@ -305,4 +305,4 @@ private:
 }  // namespace logging
 
 #endif  // LOGGING_HAS_LOGURU
-#endif  // LOGGING_SRC_BACKEND_LOGURU_BACKEND_H
+#endif  // LOGGING_INCLUDE_BACKEND_LOGURU_BACKEND_H
