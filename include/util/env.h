@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_UTIL_ENV_H
+#define LOGGING_UTIL_ENV_H
 
 #include <cstdint>
 #include <optional>
@@ -39,3 +41,4 @@ LOGGING_API bool read_env_bool(const char* name, bool default_val, bool* value);
 LOGGING_API bool read_env_int64(const char* name, int64_t default_val, int64_t* value);
 
 }  // namespace logging::utils
+#endif  // LOGGING_UTIL_ENV_H

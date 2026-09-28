@@ -77,21 +77,28 @@ void init_exception_mode_from_env() noexcept
     const char* env_mode = std::getenv("LOGGING_EXCEPTION_MODE");
     if (env_mode != nullptr)
     {
-        std::string mode_str(env_mode);
-        if (mode_str == "LOG_FATAL" || mode_str == "log_fatal")
+        try
         {
-            g_exception_mode_.store(exception_mode::LOG_FATAL, std::memory_order_relaxed);
-            LOGGING_LOG_INFO("Exception mode set to LOG_FATAL from environment");
+            std::string mode_str(env_mode);
+            if (mode_str == "LOG_FATAL" || mode_str == "log_fatal")
+            {
+                g_exception_mode_.store(exception_mode::LOG_FATAL, std::memory_order_relaxed);
+                LOGGING_LOG_INFO("Exception mode set to LOG_FATAL from environment");
+            }
+            else if (mode_str == "THROW" || mode_str == "throw")
+            {
+                g_exception_mode_.store(exception_mode::THROW, std::memory_order_relaxed);
+                LOGGING_LOG_INFO("Exception mode set to THROW from environment");
+            }
+            else
+            {
+                LOGGING_LOG_WARNING(
+                    "Invalid LOGGING_EXCEPTION_MODE value: {}. Using default.", mode_str);
+            }
         }
-        else if (mode_str == "THROW" || mode_str == "throw")
+        catch (...)  // NOLINT(bugprone-empty-catch)
         {
-            g_exception_mode_.store(exception_mode::THROW, std::memory_order_relaxed);
-            LOGGING_LOG_INFO("Exception mode set to THROW from environment");
-        }
-        else
-        {
-            LOGGING_LOG_WARNING(
-                "Invalid LOGGING_EXCEPTION_MODE value: {}. Using default.", mode_str);
+            // If allocation fails, use default mode
         }
     }
 
@@ -114,8 +121,7 @@ exception::exception(
 
 //-----------------------------------------------------------------------------
 exception::exception(source_location source_location, std::string msg, exception_category category)
-    : exception(
-          std::move(msg),
+    : exception(std::move(msg),
           std::string("Exception raised from ") + std::string(source_location.function) + " at " +
               std::string(source_location.file) + ":" + std::to_string(source_location.line) +
               " (most recent call first):\n" +
@@ -126,19 +132,17 @@ exception::exception(source_location source_location, std::string msg, exception
 }
 
 //-----------------------------------------------------------------------------
-exception::exception(
-    source_location            source_location,
-    std::string                msg,
-    std::shared_ptr<exception> nested,
-    exception_category         category)
+exception::exception(source_location source_location,
+    std::string                      msg,
+    std::shared_ptr<exception>       nested,
+    exception_category               category)
     : msg_(std::move(msg)),
       backtrace_(
           std::string("Exception raised from ") + std::string(source_location.function) + " at " +
           std::string(source_location.file) + ":" + std::to_string(source_location.line) +
           " (most recent call first):\n" +
           (logging::back_trace::capture_on_error() ? (*GetFetchStackTrace())() : std::string{})),
-      caller_(nullptr),
-      nested_exception_(std::move(nested)),  //NOLINT
+      caller_(nullptr), nested_exception_(std::move(nested)),  // NOLINT
       category_(category)
 {
     refresh_what();
@@ -147,21 +151,29 @@ exception::exception(
 //-----------------------------------------------------------------------------
 const char* exception::what() const noexcept
 {
-    return what_
-        .ensure(
-            [this]
-            {
-                try
+    try
+    {
+        return what_
+            .ensure(
+                [this]
                 {
-                    return compute_what(/*include_backtrace*/ true);
-                }
-                catch (...)
-                {
-                    // what() is noexcept, we need to return something here.
-                    return std::string{"<Error computing exception::what()>"};
-                }
-            })
-        .c_str();
+                    try
+                    {
+                        return compute_what(/*include_backtrace*/ true);
+                    }
+                    catch (...)
+                    {
+                        // what() is noexcept, we need to return something here.
+                        return std::string{"<Error computing exception::what()>"};
+                    }
+                })
+            .c_str();
+    }
+    catch (...)
+    {
+        static constexpr const char* error_msg = "<Error computing exception::what()>";
+        return error_msg;
+    }
 }
 
 //-----------------------------------------------------------------------------

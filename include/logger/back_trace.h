@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef LOGGING_LOGGER_BACK_TRACE_H
+#define LOGGING_LOGGER_BACK_TRACE_H
 
 #include <cstddef>
 #include <string>
@@ -147,3 +149,4 @@ LOGGING_API bool capture_on_error();
 LOGGING_API bool is_supported();
 };  // namespace back_trace
 }  // namespace logging
+#endif  // LOGGING_LOGGER_BACK_TRACE_H

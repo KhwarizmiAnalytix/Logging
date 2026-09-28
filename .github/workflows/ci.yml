@@ -246,7 +246,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: choco install -y opencppcoverage
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -304,3 +304,65 @@ jobs:
           files: build/coverage_filtered.info
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Installation & find_package() test: verify that the installed package
+  # works with find_package() in downstream projects (NATIVE backend).
+  # Test on Linux and macOS only (representative of Unix-like systems).
+  # ---------------------------------------------------------------------------
+  install-and-find-package:
+    name: Install & find_package / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Ninja (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Install Ninja (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Configure Logging
+        run: >
+          cmake -S . -B build_logging -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DLOGGING_BACKEND=NATIVE
+          -DLOGGING_ENABLE_TESTING=OFF
+          -DLOGGING_ENABLE_BENCHMARK=OFF
+          -DCMAKE_INSTALL_PREFIX=/tmp/logging_install
+
+      - name: Build Logging
+        run: cmake --build build_logging
+
+      - name: Install Logging
+        run: cmake --install build_logging
+
+      - name: Configure Example (find_package test)
+        run: >
+          cmake -S Examples/FindPackageExample -B build_example
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH=/tmp/logging_install
+
+      - name: Build Example
+        run: cmake --build build_example
+
+      - name: Test Example
+        run: ctest --test-dir build_example --output-on-failure
+
+      - name: Verify Installed Headers
+        run: |
+          test -f /tmp/logging_install/include/logging.h || exit 1
+          test -f /tmp/logging_install/include/logger/logger.h || exit 1
+          test -f /tmp/logging_install/include/backend/backend.h || exit 1
+          test -f /tmp/logging_install/include/backend/native_backend.h || exit 1
+          test -f /tmp/logging_install/lib/cmake/Logging/LoggingConfig.cmake || exit 1
+          echo "✅ All expected installation files verified"

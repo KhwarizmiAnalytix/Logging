@@ -68,7 +68,14 @@ std::optional<std::string> get_env(const char* name) noexcept
 #endif
     if (envar != nullptr)
     {
-        return std::string(envar);
+        try
+        {
+            return std::string(envar);
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
     }
     return std::nullopt;
 }
@@ -118,8 +125,7 @@ bool read_env_bool(const char* name, bool default_val, bool* value)
     }
 
     std::string str_value = *env_opt;
-    std::transform(
-        str_value.begin(),
+    std::transform(str_value.begin(),
         str_value.end(),
         str_value.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -135,8 +141,7 @@ bool read_env_bool(const char* name, bool default_val, bool* value)
         return true;
     }
 
-    LOGGING_LOG_ERROR(
-        "Failed to parse the env-var {} into bool: {}. Use the default value: {}",
+    LOGGING_LOG_ERROR("Failed to parse the env-var {} into bool: {}. Use the default value: {}",
         env_name,
         str_value,
         default_val);
@@ -188,8 +193,7 @@ bool read_env_int64(const char* name, int64_t default_val, int64_t* value)
         return false;
     }
 
-    LOGGING_LOG_ERROR(
-        "Failed to parse the env-var {} into int64: {}. Use the default value: {}",
+    LOGGING_LOG_ERROR("Failed to parse the env-var {} into int64: {}. Use the default value: {}",
         env_name,
         str,
         default_val);

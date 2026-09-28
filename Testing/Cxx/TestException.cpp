@@ -106,6 +106,17 @@ TEST(Exception, basic_functionality)
     ASSERT_ANY_THROW({ LOGGING_CHECK(false, "LOGGING_CHECK: Should throw"); });
     ASSERT_ANY_THROW({ LOGGING_THROW("LOGGING_THROW: should throw"); });
 
+    // LOGGING_CHECK_IF_NOT_ON_CUDA/LOGGING_CHECK_DEBUG_IF_NOT_ON_CUDA expand to
+    // plain LOGGING_CHECK/LOGGING_CHECK_DEBUG outside of __CUDACC__/__HIPCC__
+    // (see TestExceptionCudaGuard.cpp for the device-compiler-elided path).
+#ifndef NDEBUG
+    ASSERT_ANY_THROW(
+        { LOGGING_CHECK_DEBUG_IF_NOT_ON_CUDA(false, "LOGGING_CHECK_DEBUG_IF_NOT_ON_CUDA"); });
+#endif
+    ASSERT_ANY_THROW({ LOGGING_CHECK_IF_NOT_ON_CUDA(false, "LOGGING_CHECK_IF_NOT_ON_CUDA"); });
+    LOGGING_CHECK_IF_NOT_ON_CUDA(true, "should not throw");
+    LOGGING_CHECK_DEBUG_IF_NOT_ON_CUDA(true, "should not throw");
+
     // Test NOT_IMPLEMENTED category using macro
     try
     {
@@ -276,8 +287,7 @@ TEST(Exception, chaining_and_context)
     // Test exception chaining
     // Create a nested exception using new/shared_ptr to avoid MSVC ICE
     logging::source_location            inner_loc{__func__, __FILE__, __LINE__};
-    std::shared_ptr<logging::exception> inner(new logging::exception(
-        inner_loc,
+    std::shared_ptr<logging::exception> inner(new logging::exception(inner_loc,
         "Inner error: database connection failed",
         logging::exception_category::RUNTIME_ERROR));
 
@@ -298,8 +308,7 @@ TEST(Exception, chaining_and_context)
     // Test context accumulation
     try
     {
-        auto e = logging::exception(
-            logging::source_location{__func__, __FILE__, __LINE__},
+        auto e = logging::exception(logging::source_location{__func__, __FILE__, __LINE__},
             "Base error",
             logging::exception_category::GENERIC);
 
@@ -544,9 +553,8 @@ TEST(Exception, init_exception_mode_from_env)
     }
 
     ASSERT_EQ(success_count.load(), 10);
-    ASSERT_TRUE(
-        logging::get_exception_mode() == logging::exception_mode::THROW ||
-        logging::get_exception_mode() == logging::exception_mode::LOG_FATAL);
+    ASSERT_TRUE(logging::get_exception_mode() == logging::exception_mode::THROW ||
+                logging::get_exception_mode() == logging::exception_mode::LOG_FATAL);
 }
 
 TEST(Exception, log_fatal_mode_aborts)

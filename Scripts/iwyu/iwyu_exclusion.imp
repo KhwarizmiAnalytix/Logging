@@ -1,0 +1,416 @@
+[
+  # ============================================================================
+  # IWYU Mapping File for XSigma Project
+  # ============================================================================
+  # This file provides mappings for include-what-you-use (IWYU) to ensure
+  # proper include recommendations for the XSigma codebase.
+  #
+  # Format: Each mapping is a JSON object with the following structure:
+  # { include: ["<from_header>", "visibility", "<to_header>", "visibility"] }
+  # { symbol: ["symbol_name", "visibility", "<header>", "visibility"] }
+  #
+  # Visibility can be "public" or "private"
+  # ============================================================================
+
+  # ============================================================================
+  # XSigma Feature Flag Configuration Headers
+  # ============================================================================
+  # Files using XSIGMA_ENABLE_* macros should include common/configure.h
+  # This ensures proper macro definitions before conditional compilation
+
+  # Conservative mappings to avoid IWYU crashes - using include mappings instead of symbol mappings
+  { include: ["\"xsigma_features.h\"", "private", "\"common/configure.h\"", "public"] },
+
+  # ============================================================================
+  # macOS / Apple libc++ Internal Headers -> Standard C++ Headers
+  # ============================================================================
+  # libc++ on macOS exposes implementation details through headers in sub-directories
+  # named __<module>/ (e.g. <__math/traits.h>, <__ostream/basic_ostream.h>).
+  # The IWYU-shipped libcxx.imp doesn't cover all of them, so we add them here.
+  # BSD/Darwin also has private C runtime headers prefixed with a single underscore
+  # (e.g. <_ctype.h>, <_stdlib.h>); map those to the portable C++ equivalents too.
+
+  # libc++ internal sub-directory headers  →  standard C++ headers
+  # (the IWYU-shipped libcxx.imp covers many __<module>/ dirs but misses __math, __new, __ostream, __vector)
+  { include: ["@<__math/.*>",   "private", "<cmath>",     "public"] },
+  { include: ["@<__new/.*>",    "private", "<new>",       "public"] },
+  { include: ["@<__ostream/.*>","private", "<ostream>",   "public"] },
+  { include: ["@<__vector/.*>", "private", "<vector>",    "public"] },
+  { include: ["@<__locale/.*>", "private", "<locale>",    "public"] },
+  { include: ["@<__print/.*>",  "private", "<print>",     "public"] },
+  { include: ["@<__span/.*>",   "private", "<span>",      "public"] },
+
+  # <__config> is a libc++ implementation detail for version/feature macros
+  { include: ["<__config>", "private", "<version>", "public"] },
+
+  # macOS private pthread sub-headers  →  POSIX public header
+  { include: ["@<sys/_pthread/.*>", "private", "<pthread.h>", "public"] },
+
+  # BSD/Darwin private C runtime headers  →  portable C++ equivalents
+  { include: ["<_ctype.h>",  "private", "<cctype>",  "public"] },
+  { include: ["<_stdlib.h>", "private", "<cstdlib>", "public"] },
+  { include: ["<_stdio.h>",  "private", "<cstdio>",  "public"] },
+  { include: ["<_string.h>", "private", "<cstring>", "public"] },
+  { include: ["<_math.h>",   "private", "<cmath>",   "public"] },
+  { include: ["<_wchar.h>",  "private", "<cwchar>",  "public"] },
+  { include: ["<_time.h>",   "private", "<ctime>",   "public"] },
+
+  # Symbol mappings for functions commonly suggested via Apple internal headers
+  { symbol: ["isfinite",  "private", "<cmath>",   "public"] },
+  { symbol: ["isnan",     "private", "<cmath>",   "public"] },
+  { symbol: ["isinf",     "private", "<cmath>",   "public"] },
+  { symbol: ["isalnum",   "private", "<cctype>",  "public"] },
+  { symbol: ["isalpha",   "private", "<cctype>",  "public"] },
+  { symbol: ["isdigit",   "private", "<cctype>",  "public"] },
+  { symbol: ["isspace",   "private", "<cctype>",  "public"] },
+  { symbol: ["isupper",   "private", "<cctype>",  "public"] },
+  { symbol: ["islower",   "private", "<cctype>",  "public"] },
+  { symbol: ["toupper",   "private", "<cctype>",  "public"] },
+  { symbol: ["tolower",   "private", "<cctype>",  "public"] },
+  { symbol: ["strtol",    "private", "<cstdlib>", "public"] },
+  { symbol: ["strtoul",   "private", "<cstdlib>", "public"] },
+  { symbol: ["strtod",    "private", "<cstdlib>", "public"] },
+  { symbol: ["strtof",    "private", "<cstdlib>", "public"] },
+  { symbol: ["strtoll",   "private", "<cstdlib>", "public"] },
+  { symbol: ["strtoull",  "private", "<cstdlib>", "public"] },
+  { symbol: ["localtime", "private", "<ctime>",   "public"] },
+  { symbol: ["gmtime",    "private", "<ctime>",   "public"] },
+  { symbol: ["mktime",    "private", "<ctime>",   "public"] },
+  { symbol: ["time",      "private", "<ctime>",   "public"] },
+  { symbol: ["getpid",    "private", "<unistd.h>","public"] },
+
+  # ============================================================================
+  # MSVC-Specific Internal Headers -> Standard C++ Headers
+  # ============================================================================
+
+  # MSVC internal headers that should map to standard C++ headers
+  { include: ["<__msvc_ostream.hpp>", "private", "<ostream>", "public"] },
+  { include: ["<__msvc_string_view.hpp>", "private", "<string_view>", "public"] },
+  { include: ["<__msvc_chrono.hpp>", "private", "<chrono>", "public"] },
+  { include: ["<__msvc_istream.hpp>", "private", "<istream>", "public"] },
+  { include: ["<__msvc_iostream.hpp>", "private", "<iostream>", "public"] },
+  { include: ["<__msvc_fstream.hpp>", "private", "<fstream>", "public"] },
+  { include: ["<__msvc_sstream.hpp>", "private", "<sstream>", "public"] },
+  { include: ["<__msvc_streambuf.hpp>", "private", "<streambuf>", "public"] },
+  { include: ["<__msvc_string.hpp>", "private", "<string>", "public"] },
+  { include: ["<__msvc_vector.hpp>", "private", "<vector>", "public"] },
+  { include: ["<__msvc_memory.hpp>", "private", "<memory>", "public"] },
+  { include: ["<__msvc_algorithm.hpp>", "private", "<algorithm>", "public"] },
+  { include: ["<__msvc_functional.hpp>", "private", "<functional>", "public"] },
+  { include: ["<__msvc_iterator.hpp>", "private", "<iterator>", "public"] },
+  { include: ["<__msvc_utility.hpp>", "private", "<utility>", "public"] },
+  { include: ["<__msvc_type_traits.hpp>", "private", "<type_traits>", "public"] },
+  { include: ["<__msvc_atomic.hpp>", "private", "<atomic>", "public"] },
+  { include: ["<__msvc_mutex.hpp>", "private", "<mutex>", "public"] },
+  { include: ["<__msvc_thread.hpp>", "private", "<thread>", "public"] },
+  { include: ["<__msvc_condition_variable.hpp>", "private", "<condition_variable>", "public"] },
+  { include: ["<__msvc_future.hpp>", "private", "<future>", "public"] },
+  { include: ["<__msvc_random.hpp>", "private", "<random>", "public"] },
+  { include: ["<__msvc_regex.hpp>", "private", "<regex>", "public"] },
+  { include: ["<__msvc_system_error.hpp>", "private", "<system_error>", "public"] },
+  { include: ["<__msvc_exception.hpp>", "private", "<exception>", "public"] },
+  { include: ["<__msvc_stdexcept.hpp>", "private", "<stdexcept>", "public"] },
+  { include: ["<__msvc_new.hpp>", "private", "<new>", "public"] },
+  { include: ["<__msvc_typeinfo.hpp>", "private", "<typeinfo>", "public"] },
+
+  # Additional MSVC internal headers
+  { include: ["<xatomic.h>", "private", "<atomic>", "public"] },
+  { include: ["<xmemory>", "private", "<memory>", "public"] },
+  { include: ["<xstring>", "private", "<string>", "public"] },
+  { include: ["<xutility>", "private", "<utility>", "public"] },
+  { include: ["<xtree>", "private", "<map>", "public"] },
+  { include: ["<xlocale>", "private", "<locale>", "public"] },
+  { include: ["<xtr1common>", "private", "<type_traits>", "public"] },
+
+  # ============================================================================
+  # Legacy C Headers -> Modern C++ Headers
+  # ============================================================================
+
+  # Standard C headers — marked "private" so IWYU redirects to the C++ <c*> wrappers.
+  # Using "public" for both sides only declares equivalence; "private" source forces the redirect.
+  { include: ["<stdint.h>",  "public", "<cstdint>",  "public"] },
+  { include: ["<stddef.h>",  "public", "<cstddef>",  "public"] },
+  { include: ["<stdlib.h>",  "public", "<cstdlib>",  "public"] },
+  { include: ["<stdio.h>",   "public", "<cstdio>",   "public"] },
+  { include: ["<string.h>",  "public", "<cstring>",  "public"] },
+  { include: ["<math.h>",    "public", "<cmath>",    "public"] },
+  { include: ["<time.h>",    "public", "<ctime>",    "public"] },
+  { include: ["<assert.h>",  "public", "<cassert>",  "public"] },
+  { include: ["<errno.h>",   "public", "<cerrno>",   "public"] },
+  { include: ["<float.h>",   "public", "<cfloat>",   "public"] },
+  { include: ["<limits.h>",  "public", "<climits>",  "public"] },
+  { include: ["<locale.h>",  "public", "<clocale>",  "public"] },
+  { include: ["<setjmp.h>",  "public", "<csetjmp>",  "public"] },
+  { include: ["<signal.h>",  "public", "<csignal>",  "public"] },
+  { include: ["<stdarg.h>",  "public", "<cstdarg>",  "public"] },
+  { include: ["<wchar.h>",   "public", "<cwchar>",   "public"] },
+  { include: ["<wctype.h>",  "public", "<cwctype>",  "public"] },
+  { include: ["<ctype.h>",   "public", "<cctype>",   "public"] },
+  { include: ["<inttypes.h>","public", "<cinttypes>","public"] },
+
+  # MSVC-specific runtime headers — all private, redirect to standard C++ headers
+  { include: ["<vcruntime_string.h>",      "private", "<cstring>",   "public"] },
+  { include: ["<corecrt_io.h>",            "private", "<cstdio>",    "public"] },
+  { include: ["<corecrt_wstdio.h>",        "private", "<cstdio>",    "public"] },
+  { include: ["<corecrt_stdio_config.h>",  "private", "<cstdio>",    "public"] },
+  { include: ["<corecrt_memory.h>",        "private", "<cstring>",   "public"] },
+  { include: ["<corecrt_memcpy_s.h>",      "private", "<cstring>",   "public"] },
+  { include: ["<corecrt_wconio.h>",        "private", "<cstdio>",    "public"] },
+  { include: ["<corecrt_wstring.h>",       "private", "<cwchar>",    "public"] },
+  { include: ["<corecrt_wtime.h>",         "private", "<ctime>",     "public"] },
+  { include: ["<vcruntime_exception.h>",   "private", "<exception>", "public"] },
+  { include: ["<vcruntime_new.h>",         "private", "<new>",       "public"] },
+  { include: ["<vcruntime_typeinfo.h>",    "private", "<typeinfo>",  "public"] },
+
+  # ============================================================================
+  # Windows-Specific Headers -> Cross-Platform Alternatives
+  # ============================================================================
+
+  # Windows synchronization -> C++ standard library
+  { include: ["<synchapi.h>", "private", "<thread>", "public"] },
+  { include: ["<processthreadsapi.h>", "private", "<thread>", "public"] },
+  { include: ["<winbase.h>", "private", "<thread>", "public"] },
+
+  # Windows time functions -> C++ chrono
+  { include: ["<sysinfoapi.h>", "private", "<chrono>", "public"] },
+  { include: ["<profileapi.h>", "private", "<chrono>", "public"] },
+
+  # Windows memory functions -> C++ memory management
+  { include: ["<heapapi.h>", "private", "<memory>", "public"] },
+  { include: ["<memoryapi.h>", "private", "<memory>", "public"] },
+
+  # Windows I/O functions -> C++ I/O
+  { include: ["<io.h>", "private", "<cstdio>", "public"] },
+  { include: ["<libloaderapi.h>", "private", "<windows.h>", "public"] },
+  { include: ["<minwindef.h>", "private", "<windows.h>", "public"] },
+  { include: ["<winnt.h>", "private", "<windows.h>", "public"] },
+
+  # ============================================================================
+  # Standard Library Headers
+  # ============================================================================
+
+  # C++ Standard Library headers (keep as-is)
+  { include: ["<algorithm>", "public", "<algorithm>", "public"] },
+  { include: ["<array>", "public", "<array>", "public"] },
+  { include: ["<atomic>", "public", "<atomic>", "public"] },
+  { include: ["<bitset>", "public", "<bitset>", "public"] },
+  { include: ["<chrono>", "public", "<chrono>", "public"] },
+  { include: ["<condition_variable>", "public", "<condition_variable>", "public"] },
+  { include: ["<deque>", "public", "<deque>", "public"] },
+  { include: ["<exception>", "public", "<exception>", "public"] },
+  { include: ["<forward_list>", "public", "<forward_list>", "public"] },
+  { include: ["<fstream>", "public", "<fstream>", "public"] },
+  { include: ["<functional>", "public", "<functional>", "public"] },
+  { include: ["<future>", "public", "<future>", "public"] },
+  { include: ["<initializer_list>", "public", "<initializer_list>", "public"] },
+  { include: ["<iomanip>", "public", "<iomanip>", "public"] },
+  { include: ["<ios>", "public", "<ios>", "public"] },
+  { include: ["<iosfwd>", "public", "<iosfwd>", "public"] },
+  { include: ["<iostream>", "public", "<iostream>", "public"] },
+  { include: ["<istream>", "public", "<istream>", "public"] },
+  { include: ["<iterator>", "public", "<iterator>", "public"] },
+  { include: ["<limits>", "public", "<limits>", "public"] },
+  { include: ["<list>", "public", "<list>", "public"] },
+  { include: ["<locale>", "public", "<locale>", "public"] },
+  { include: ["<map>", "public", "<map>", "public"] },
+  { include: ["<memory>", "public", "<memory>", "public"] },
+  { include: ["<mutex>", "public", "<mutex>", "public"] },
+  { include: ["<new>", "public", "<new>", "public"] },
+  { include: ["<numeric>", "public", "<numeric>", "public"] },
+  { include: ["<ostream>", "public", "<ostream>", "public"] },
+  { include: ["<queue>", "public", "<queue>", "public"] },
+  { include: ["<random>", "public", "<random>", "public"] },
+  { include: ["<regex>", "public", "<regex>", "public"] },
+  { include: ["<set>", "public", "<set>", "public"] },
+  { include: ["<sstream>", "public", "<sstream>", "public"] },
+  { include: ["<stack>", "public", "<stack>", "public"] },
+  { include: ["<stdexcept>", "public", "<stdexcept>", "public"] },
+  { include: ["<streambuf>", "public", "<streambuf>", "public"] },
+  { include: ["<string>", "public", "<string>", "public"] },
+  { include: ["<system_error>", "public", "<system_error>", "public"] },
+  { include: ["<thread>", "public", "<thread>", "public"] },
+  { include: ["<tuple>", "public", "<tuple>", "public"] },
+  { include: ["<type_traits>", "public", "<type_traits>", "public"] },
+  { include: ["<typeinfo>", "public", "<typeinfo>", "public"] },
+  { include: ["<unordered_map>", "public", "<unordered_map>", "public"] },
+  { include: ["<unordered_set>", "public", "<unordered_set>", "public"] },
+  { include: ["<utility>", "public", "<utility>", "public"] },
+  { include: ["<valarray>", "public", "<valarray>", "public"] },
+  { include: ["<vector>", "public", "<vector>", "public"] },
+
+  # ============================================================================
+  # Symbol Mappings for Legacy C Types and Functions
+  # ============================================================================
+
+  # Standard integer types (legacy C types)
+  { symbol: ["int8_t", "private", "<cstdint>", "public"] },
+  { symbol: ["int16_t", "private", "<cstdint>", "public"] },
+  { symbol: ["int32_t", "private", "<cstdint>", "public"] },
+  { symbol: ["int64_t", "private", "<cstdint>", "public"] },
+  { symbol: ["uint8_t", "private", "<cstdint>", "public"] },
+  { symbol: ["uint16_t", "private", "<cstdint>", "public"] },
+  { symbol: ["uint32_t", "private", "<cstdint>", "public"] },
+  { symbol: ["uint64_t", "private", "<cstdint>", "public"] },
+  { symbol: ["size_t", "private", "<cstddef>", "public"] },
+  { symbol: ["ptrdiff_t", "private", "<cstddef>", "public"] },
+  { symbol: ["uintptr_t", "private", "<cstdint>", "public"] },
+  { symbol: ["intptr_t", "private", "<cstdint>", "public"] },
+  { symbol: ["SIZE_MAX", "private", "<cstdint>", "public"] },
+  { symbol: ["UINT64_MAX", "private", "<cstdint>", "public"] },
+  { symbol: ["INT64_MAX", "private", "<cstdint>", "public"] },
+  { symbol: ["UINT32_MAX", "private", "<cstdint>", "public"] },
+  { symbol: ["INT32_MAX", "private", "<cstdint>", "public"] },
+
+  # String and memory functions (legacy C functions)
+  { symbol: ["memset", "private", "<cstring>", "public"] },
+  { symbol: ["memcpy", "private", "<cstring>", "public"] },
+  { symbol: ["memmove", "private", "<cstring>", "public"] },
+  { symbol: ["memcmp", "private", "<cstring>", "public"] },
+  { symbol: ["strlen", "private", "<cstring>", "public"] },
+  { symbol: ["strcpy", "private", "<cstring>", "public"] },
+  { symbol: ["strncpy", "private", "<cstring>", "public"] },
+  { symbol: ["strcmp", "private", "<cstring>", "public"] },
+  { symbol: ["strncmp", "private", "<cstring>", "public"] },
+  { symbol: ["strcat", "private", "<cstring>", "public"] },
+  { symbol: ["strncat", "private", "<cstring>", "public"] },
+  { symbol: ["strchr", "private", "<cstring>", "public"] },
+  { symbol: ["strrchr", "private", "<cstring>", "public"] },
+  { symbol: ["strstr", "private", "<cstring>", "public"] },
+
+  # I/O functions (legacy C functions)
+  { symbol: ["printf", "private", "<cstdio>", "public"] },
+  { symbol: ["fprintf", "private", "<cstdio>", "public"] },
+  { symbol: ["sprintf", "private", "<cstdio>", "public"] },
+  { symbol: ["snprintf", "private", "<cstdio>", "public"] },
+  { symbol: ["scanf", "private", "<cstdio>", "public"] },
+  { symbol: ["fscanf", "private", "<cstdio>", "public"] },
+  { symbol: ["sscanf", "private", "<cstdio>", "public"] },
+  { symbol: ["fopen", "private", "<cstdio>", "public"] },
+  { symbol: ["fclose", "private", "<cstdio>", "public"] },
+  { symbol: ["fread", "private", "<cstdio>", "public"] },
+  { symbol: ["fwrite", "private", "<cstdio>", "public"] },
+  { symbol: ["fseek", "private", "<cstdio>", "public"] },
+  { symbol: ["ftell", "private", "<cstdio>", "public"] },
+  { symbol: ["rewind", "private", "<cstdio>", "public"] },
+  { symbol: ["remove", "private", "<cstdio>", "public"] },
+  { symbol: ["rename", "private", "<cstdio>", "public"] },
+  { symbol: ["unlink", "private", "<cstdio>", "public"] },
+
+  # Memory allocation (legacy C functions)
+  { symbol: ["malloc", "private", "<cstdlib>", "public"] },
+  { symbol: ["calloc", "private", "<cstdlib>", "public"] },
+  { symbol: ["realloc", "private", "<cstdlib>", "public"] },
+  { symbol: ["free", "private", "<cstdlib>", "public"] },
+  { symbol: ["abort", "private", "<cstdlib>", "public"] },
+  { symbol: ["exit", "private", "<cstdlib>", "public"] },
+  { symbol: ["atexit", "private", "<cstdlib>", "public"] },
+  { symbol: ["abs", "private", "<cstdlib>", "public"] },
+
+  # Math functions (legacy C functions)
+  { symbol: ["fabs", "private", "<cmath>", "public"] },
+  { symbol: ["sqrt", "private", "<cmath>", "public"] },
+  { symbol: ["pow", "private", "<cmath>", "public"] },
+  { symbol: ["sin", "private", "<cmath>", "public"] },
+  { symbol: ["cos", "private", "<cmath>", "public"] },
+  { symbol: ["tan", "private", "<cmath>", "public"] },
+  { symbol: ["log", "private", "<cmath>", "public"] },
+  { symbol: ["log10", "private", "<cmath>", "public"] },
+  { symbol: ["exp", "private", "<cmath>", "public"] },
+  { symbol: ["ceil", "private", "<cmath>", "public"] },
+  { symbol: ["floor", "private", "<cmath>", "public"] },
+  { symbol: ["round", "private", "<cmath>", "public"] },
+
+  # Windows-specific functions that should use cross-platform alternatives
+  { symbol: ["Sleep", "private", "<thread>", "public"] },
+  { symbol: ["GetTickCount", "private", "<chrono>", "public"] },
+  { symbol: ["QueryPerformanceCounter", "private", "<chrono>", "public"] },
+  { symbol: ["QueryPerformanceFrequency", "private", "<chrono>", "public"] },
+
+  # Common STL symbols that might be ambiguous
+  { symbol: ["std::size_t", "private", "<cstddef>", "public"] },
+  { symbol: ["std::ptrdiff_t", "private", "<cstddef>", "public"] },
+  { symbol: ["std::nullptr_t", "private", "<cstddef>", "public"] },
+  { symbol: ["std::string", "private", "<string>", "public"] },
+  { symbol: ["std::wstring", "private", "<string>", "public"] },
+  { symbol: ["std::vector", "private", "<vector>", "public"] },
+  { symbol: ["std::map", "private", "<map>", "public"] },
+  { symbol: ["std::set", "private", "<set>", "public"] },
+  { symbol: ["std::unordered_map", "private", "<unordered_map>", "public"] },
+  { symbol: ["std::unordered_set", "private", "<unordered_set>", "public"] },
+  { symbol: ["std::shared_ptr", "private", "<memory>", "public"] },
+  { symbol: ["std::unique_ptr", "private", "<memory>", "public"] },
+  { symbol: ["std::weak_ptr", "private", "<memory>", "public"] },
+  { symbol: ["std::make_shared", "private", "<memory>", "public"] },
+  { symbol: ["std::make_unique", "private", "<memory>", "public"] },
+  { symbol: ["std::move", "private", "<utility>", "public"] },
+  { symbol: ["std::forward", "private", "<utility>", "public"] },
+  { symbol: ["std::pair", "private", "<utility>", "public"] },
+  { symbol: ["std::tuple", "private", "<tuple>", "public"] },
+  { symbol: ["std::optional", "private", "<optional>", "public"] },
+  { symbol: ["std::variant", "private", "<variant>", "public"] },
+  { symbol: ["std::any", "private", "<any>", "public"] },
+  { symbol: ["std::function", "private", "<functional>", "public"] },
+  { symbol: ["std::bind", "private", "<functional>", "public"] },
+  { symbol: ["std::ref", "private", "<functional>", "public"] },
+  { symbol: ["std::cref", "private", "<functional>", "public"] },
+  { symbol: ["std::thread", "private", "<thread>", "public"] },
+  { symbol: ["std::mutex", "private", "<mutex>", "public"] },
+  { symbol: ["std::lock_guard", "private", "<mutex>", "public"] },
+  { symbol: ["std::unique_lock", "private", "<mutex>", "public"] },
+  { symbol: ["std::condition_variable", "private", "<condition_variable>", "public"] },
+  { symbol: ["std::atomic", "private", "<atomic>", "public"] },
+  { symbol: ["std::chrono::duration", "private", "<chrono>", "public"] },
+  { symbol: ["std::chrono::time_point", "private", "<chrono>", "public"] },
+  { symbol: ["std::cout", "private", "<iostream>", "public"] },
+  { symbol: ["std::cin", "private", "<iostream>", "public"] },
+  { symbol: ["std::cerr", "private", "<iostream>", "public"] },
+  { symbol: ["std::endl", "private", "<iostream>", "public"] },
+
+  # Type traits
+  { symbol: ["std::is_same", "private", "<type_traits>", "public"] },
+  { symbol: ["std::enable_if", "private", "<type_traits>", "public"] },
+  { symbol: ["std::conditional", "private", "<type_traits>", "public"] },
+  { symbol: ["std::decay", "private", "<type_traits>", "public"] },
+  { symbol: ["std::remove_reference", "private", "<type_traits>", "public"] },
+  { symbol: ["std::remove_const", "private", "<type_traits>", "public"] },
+  { symbol: ["std::remove_cv", "private", "<type_traits>", "public"] },
+
+  # ============================================================================
+  # TBB (Intel Threading Building Blocks) Header Mappings
+  # ============================================================================
+  # Map oneapi/tbb headers to standard tbb headers for cross-platform compatibility
+
+  { include: ["<oneapi/tbb/blocked_range.h>", "public", "<tbb/blocked_range.h>", "public"] },
+  { include: ["<oneapi/tbb/parallel_for.h>", "public", "<tbb/parallel_for.h>", "public"] },
+  { include: ["<oneapi/tbb/parallel_sort.h>", "public", "<tbb/parallel_sort.h>", "public"] },
+  { include: ["<oneapi/tbb/parallel_reduce.h>", "public", "<tbb/parallel_reduce.h>", "public"] },
+  { include: ["<oneapi/tbb/parallel_scan.h>", "public", "<tbb/parallel_scan.h>", "public"] },
+  { include: ["<oneapi/tbb/parallel_invoke.h>", "public", "<tbb/parallel_invoke.h>", "public"] },
+  { include: ["<oneapi/tbb/task_group.h>", "public", "<tbb/task_group.h>", "public"] },
+  { include: ["<oneapi/tbb/task_arena.h>", "public", "<tbb/task_arena.h>", "public"] },
+  { include: ["<oneapi/tbb/task_scheduler_init.h>", "public", "<tbb/task_scheduler_init.h>", "public"] },
+  { include: ["<oneapi/tbb/enumerable_thread_specific.h>", "public", "<tbb/enumerable_thread_specific.h>", "public"] },
+  { include: ["<oneapi/tbb/concurrent_vector.h>", "public", "<tbb/concurrent_vector.h>", "public"] },
+  { include: ["<oneapi/tbb/concurrent_queue.h>", "public", "<tbb/concurrent_queue.h>", "public"] },
+  { include: ["<oneapi/tbb/concurrent_hash_map.h>", "public", "<tbb/concurrent_hash_map.h>", "public"] },
+  { include: ["<oneapi/tbb/concurrent_unordered_map.h>", "public", "<tbb/concurrent_unordered_map.h>", "public"] },
+  { include: ["<oneapi/tbb/concurrent_unordered_set.h>", "public", "<tbb/concurrent_unordered_set.h>", "public"] },
+  { include: ["<oneapi/tbb/spin_mutex.h>", "public", "<tbb/spin_mutex.h>", "public"] },
+  { include: ["<oneapi/tbb/spin_rw_mutex.h>", "public", "<tbb/spin_rw_mutex.h>", "public"] },
+  { include: ["<oneapi/tbb/mutex.h>", "public", "<tbb/mutex.h>", "public"] },
+  { include: ["<oneapi/tbb/recursive_mutex.h>", "public", "<tbb/recursive_mutex.h>", "public"] },
+  { include: ["<oneapi/tbb/atomic.h>", "public", "<tbb/atomic.h>", "public"] },
+  { include: ["<oneapi/tbb/tick_count.h>", "public", "<tbb/tick_count.h>", "public"] },
+  { include: ["<oneapi/tbb/tbb.h>", "public", "<tbb/tbb.h>", "public"] },
+  { include: ["<oneapi/tbb/version.h>", "public", "<tbb/version.h>", "public"] },
+  { include: ["<oneapi/tbb/global_control.h>", "public", "<tbb/global_control.h>", "public"] },
+  { include: ["<oneapi/tbb/info.h>", "public", "<tbb/info.h>", "public"] },
+
+  # ============================================================================
+  # Conservative XSigma Project Mappings
+  # ============================================================================
+  # Minimal mappings to avoid IWYU crashes while maintaining functionality
+
+  # Only essential mappings that are known to work reliably
+
+]

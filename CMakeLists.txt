@@ -42,6 +42,12 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Cmake")
 # repo's own copy is a harmless identical redefinition.
 include(third_party_helpers)
 
+# Standard, platform-correct install destinations (lib/lib64/etc. via
+# CMAKE_INSTALL_LIBDIR) instead of hardcoding "lib"/"bin". Included early:
+# CMAKE_INSTALL_INCLUDEDIR is referenced by target_include_directories()
+# below, not just by the install() calls at the bottom of this file.
+include(GNUInstallDirs)
+
 # --- Section 1: Feature flags (LOGGING_ENABLE_*) and backend selector ---
 include(CheckCXXSourceCompiles)
 check_cxx_source_compiles(
@@ -375,7 +381,16 @@ if(LOGGING_ENABLE_MAGICENUM)
     AUTO_ADD_TO_DEPENDENCIES
     OFF
   )
-  list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_magic_enum}/magic_enum/include")
+  # NOT added to LOGGING_DEPENDENCY_INCLUDE_DIRS (which is PRIVATE, see
+  # below): unlike fmt/loguru/glog/spdlog, magic_enum is used directly from
+  # a PUBLIC header (include/util/string_util.h, behind #if
+  # LOGGING_HAS_MAGICENUM) via #include <magic_enum/magic_enum.hpp>, so a
+  # consumer including that header genuinely needs magic_enum's include dir
+  # on their own path. Handled as its own PUBLIC entry near the main
+  # target_include_directories() call, with its headers physically copied
+  # into our own install tree (see the "--- Installation ---" section)
+  # rather than exporting a separate magic_enum package dependency.
+  set(LOGGING_MAGICENUM_INCLUDE_DIR "${_tp_magic_enum}/magic_enum/include")
 endif()
 if(LOGGING_BACKEND STREQUAL "LOGURU")
   add_third_party_library(
@@ -419,7 +434,21 @@ if(LOGGING_BACKEND STREQUAL "GLOG")
     AUTO_ADD_TO_DEPENDENCIES
     OFF
   )
-  list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_glog}/glog/src")
+  # add_third_party_library() tries an external (system) glog first when
+  # XSIGMA_ENABLE_EXTERNAL is ON (the default) -- and this machine's Homebrew
+  # glog is found, since XSigma's helper does a QUIET find_package(glog)
+  # before ever looking at ThirdParty/glog. When that happens, only the
+  # namespaced "glog::glog" target it exports exists; the bare "glog" target
+  # is only defined by our own bundled CMakeLists.txt via add_subdirectory.
+  # Appending our bundled ThirdParty/glog/glog/src unconditionally used to add
+  # a second, stale glog/flags.h to the include path -- one whose GLOG_EXPORT
+  # macro depends on a generate_export_header() output that only exists when
+  # the bundled subdirectory was actually configured. That stale header could
+  # shadow the external package's own (correctly export-macro'd) headers,
+  # breaking the build. Only add it when the bundled copy is the one in use.
+  if(TARGET glog)
+    list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_glog}/glog/src")
+  endif()
 endif()
 if(LOGGING_BACKEND STREQUAL "SPDLOG")
   # spdlog as HEADER_ONLY: add_third_party_library only skips compilation for LIBRARY_TYPE
@@ -440,35 +469,52 @@ if(LOGGING_BACKEND STREQUAL "SPDLOG")
   list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_spdlog}/spdlog/include")
 endif()
 
-# --- Source discovery ---
-set(logging_headers "")
-set(logging_sources "")
+# --- Explicit source and header lists (Phase B: replacing glob pattern) ---
+# Headers: Public API and internal headers
+set(logging_headers
+  # Public headers - the single logging API
+  include/logger/logger.h
+  include/logger/logger_verbosity_enum.h
+  include/logger/config.h
+  include/logger/structured.h
+  include/logger/back_trace.h
+  include/util/exception.h
+  include/util/string_util.h
+  include/util/env.h
+  include/util/lazy.h
 
-file(GLOB_RECURSE logging_headers LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
-                                                         "${CMAKE_CURRENT_SOURCE_DIR}/*.hxx"
+  # Public headers - common utilities
+  include/common/logging_export.h
+  include/common/logging_macros.h
+  include/common/logging_pointer.h
+
+  # Backend implementation headers (private, but listed so IDEs index them).
+  # Exactly one concrete backend type is selected at compile time in backend.h.
+  include/backend/backend.h
+  include/backend/backend_types.h
+  include/backend/backend_shared.h
+  include/backend/loguru_backend.h
+  include/backend/native_backend.h
+  include/backend/spdlog_backend.h
+  include/backend/glog_backend.h
 )
-file(GLOB_RECURSE logging_sources LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
-# Keep test sources out of the Logging library target.
-list(FILTER logging_sources EXCLUDE REGEX ".*/Testing/.*")
-list(FILTER logging_headers EXCLUDE REGEX ".*/Testing/.*")
-
-# Keep vendored third-party sources (ThirdParty/ nested submodules) out of the library target.
-# Anchored at CMAKE_CURRENT_SOURCE_DIR: when embedded in XSigma the repo lives at
-# XSigma/ThirdParty/Logging, so an unanchored ".*/ThirdParty/.*" would exclude everything.
-list(FILTER logging_sources EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
-list(FILTER logging_headers EXCLUDE REGEX "^${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/")
-
-# Keep CMake's own generated files (compiler-ID probes, etc.) out of the library target.
-# The glob above is unscoped over the whole source tree, so any build directory configured
-# in-tree — the norm here, and required by Scripts/setup.py's builder_suffix convention,
-# which keeps many named build dirs side by side (build, build_ninja, ...) — has its
-# CompilerIdCXX probe .cpp swept in as a "source". Two or more such build dirs coexisting
-# then each contribute a colliding probe, producing duplicate-symbol link errors. Matching
-# on "/CMakeFiles/" (rather than a build-dir naming convention) catches any build directory
-# name, including custom ones from `-B <name>`.
-list(FILTER logging_sources EXCLUDE REGEX "/CMakeFiles/")
-list(FILTER logging_headers EXCLUDE REGEX "/CMakeFiles/")
+# Sources: Implementation files (only non-test, non-vendor files)
+set(logging_sources
+  # Core implementation (moved to src/)
+  src/logger.cpp
+  src/back_trace.cpp
+  src/exception.cpp
+  src/string_util.cpp
+  src/env.cpp
+  # Backend implementations selected at compile time; reached via
+  # backend::active_backend() (a singleton) instead of per-call #if.
+  src/backend/factory.cpp
+  src/backend/native_backend.cpp
+  src/backend/spdlog_backend.cpp
+  src/backend/loguru_backend.cpp
+  src/backend/glog_backend.cpp
+)
 
 # --- Target definition ---
 set(CMAKE_CXX_STANDARD ${LOGGING_CXX_STANDARD})
@@ -522,27 +568,58 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/Testing/LoggingTest.h" @ONLY
 )
 
-# Include roots: Library/Logging               → "include/logging.h", "include/util/exception.h",
-#                                                  "include/common/logging_export.h"
-# Library/Logging/include/logger → "logger.h", "back_trace.h", "logger_verbosity_enum.h"
+# Include roots:
+# Build interface (source tree):
+# - include/logger/: The single logging API - #include "include/logger/logger.h"
+# - Repository root: also usable directly, e.g. #include "logger_verbosity_enum.h"
+#   from within include/logger/ itself, and "src/backend/*.h" internally.
+# Install interface (installed headers land at <prefix>/include/{common,logger,util}/*
+# and <prefix>/include/logging.h -- see the install(DIRECTORY ...) call below):
+# - "." (the install prefix itself): needed because every public header uses
+#   repo-root-relative includes baked into the literal path string, e.g.
+#   #include "include/common/logging_export.h" -- resolving that after
+#   install requires the *parent* of the installed include/ tree, i.e. the
+#   prefix, on the search path (not <prefix>/include).
+# - include/logger: for the bare/sibling-relative includes used within
+#   include/logger/ itself, e.g. logger.h's #include "logger_verbosity_enum.h".
+# - LOGGING_MAGICENUM_INCLUDE_DIR (build) / CMAKE_INSTALL_INCLUDEDIR
+#   (install): include/util/string_util.h is a public header and includes
+#   <magic_enum/magic_enum.hpp> directly when LOGGING_HAS_MAGICENUM, so
+#   magic_enum's include dir must be PUBLIC too -- unlike fmt/loguru/glog/
+#   spdlog below. Its headers are physically copied into our own installed
+#   include/ tree (see "--- Installation ---"), so the install-side entry is
+#   just the standard include dir, not a separate exported dependency.
 target_include_directories(
   Logging
-  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/logger>
-         $<INSTALL_INTERFACE:include/Logging>
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/logger>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+         $<INSTALL_INTERFACE:.>
+         $<INSTALL_INTERFACE:include/logger>
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
+if(LOGGING_ENABLE_MAGICENUM)
+  target_include_directories(
+    Logging PUBLIC $<BUILD_INTERFACE:${LOGGING_MAGICENUM_INCLUDE_DIR}>
+                    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  )
+endif()
 
 if(LOGGING_DEPENDENCY_INCLUDE_DIRS)
-  target_include_directories(Logging PUBLIC ${LOGGING_DEPENDENCY_INCLUDE_DIRS})
+  # PRIVATE: none of fmt/loguru/glog/spdlog's types appear in
+  # Logging's own public headers (fmt is confined to string_util.cpp; the
+  # active backend is an implementation detail behind logger::), so a
+  # consumer linking Logging::Logging never needs these on their own include
+  # path, and the installed package doesn't need to separately export them.
+  target_include_directories(Logging PRIVATE ${LOGGING_DEPENDENCY_INCLUDE_DIRS})
 endif()
 
 if(TARGET Fmt::fmt)
   list(APPEND LOGGING_DEPENDENCY_LIBS Fmt::fmt)
 endif()
-if(TARGET MagicEnum::magic_enum)
-  list(APPEND LOGGING_DEPENDENCY_LIBS MagicEnum::magic_enum)
-endif()
+# MagicEnum::magic_enum deliberately excluded from LOGGING_DEPENDENCY_LIBS
+# (PRIVATE, see above) -- it needs to be a PUBLIC include dir instead; see
+# LOGGING_MAGICENUM_INCLUDE_DIR near the main target_include_directories()
+# call and the header install below.
 if(TARGET Loguru::loguru)
   list(APPEND LOGGING_DEPENDENCY_LIBS Loguru::loguru)
 endif()
@@ -564,7 +641,12 @@ if(LOGGING_ENABLE_IWYU)
 endif()
 
 if(LOGGING_DEPENDENCY_LIBS)
-  target_link_libraries(Logging PUBLIC ${LOGGING_DEPENDENCY_LIBS})
+  # PRIVATE for the same reason as the include dirs above: these are
+  # implementation details, not part of Logging's interface. Keeping them
+  # PRIVATE also keeps them out of the exported LoggingTargets.cmake, so
+  # find_package(Logging) in a downstream project never needs to separately
+  # locate/export fmt, loguru, glog, spdlog, or magic_enum.
+  target_link_libraries(Logging PRIVATE ${LOGGING_DEPENDENCY_LIBS})
 endif()
 
 if(LOGGING_DEPENDENCY_COMPILE_DEFINITIONS)
@@ -580,17 +662,73 @@ endif()
 install(
   TARGETS Logging
   EXPORT LoggingTargets
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-  RUNTIME DESTINATION bin
-  INCLUDES
-  DESTINATION include
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+# Trailing slash on the source: installs include/'s *contents* (common/,
+# logger/, util/, logging.h) directly under <prefix>/include, matching the
+# INSTALL_INTERFACE "." + "include/logger" search roots set above -- not
+# nested under an extra "Logging/include/" (which the target_include_
+# directories() INSTALL_INTERFACE entries above do not account for, and
+# which would leave every "include/..."-prefixed internal #include broken
+# post-install).
 install(
-  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  DESTINATION include/Logging
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   FILES_MATCHING
   PATTERN "*.h"
+)
+if(LOGGING_ENABLE_MAGICENUM)
+  # include/util/string_util.h (public) includes <magic_enum/magic_enum.hpp>
+  # directly -- physically copy magic_enum's headers into our own install
+  # tree rather than exporting it as a separate find_package dependency
+  # (it's header-only and vendored, so there's no compiled artifact or
+  # upstream package identity to preserve).
+  install(
+    DIRECTORY "${LOGGING_MAGICENUM_INCLUDE_DIR}/magic_enum"
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING
+    PATTERN "*.hpp"
+  )
+endif()
+
+# --- CMake package config (find_package(Logging) support) ---
+# LOGGING_DEPENDENCY_LIBS (fmt/loguru/glog/spdlog) are linked
+# PRIVATE above and never appear in LoggingTargets.cmake's
+# INTERFACE_LINK_LIBRARIES, so LoggingConfig.cmake does not need to also
+# find_dependency() them -- they're an implementation detail baked into
+# libLogging, not part of a consumer's link graph.
+include(CMakePackageConfigHelpers)
+
+set(LOGGING_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/Logging")
+
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/Cmake/LoggingConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/LoggingConfig.cmake"
+  INSTALL_DESTINATION "${LOGGING_INSTALL_CMAKEDIR}"
+)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/LoggingConfigVersion.cmake"
+  # Hardcoded rather than ${PROJECT_VERSION}: when embedded via
+  # add_subdirectory (LOGGING_STANDALONE OFF), PROJECT_VERSION belongs to
+  # whichever project() call is nearest/outermost, not this one's
+  # project(Logging VERSION 1.0.0 ...) -- which only runs in the standalone
+  # branch above. Keep in sync with that VERSION.
+  VERSION 1.0.0
+  COMPATIBILITY SameMajorVersion
+)
+
+install(
+  EXPORT LoggingTargets
+  FILE LoggingTargets.cmake
+  NAMESPACE Logging::
+  DESTINATION "${LOGGING_INSTALL_CMAKEDIR}"
+)
+install(
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/LoggingConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/LoggingConfigVersion.cmake"
+  DESTINATION "${LOGGING_INSTALL_CMAKEDIR}"
 )
 
 # --- Testing ---

@@ -1,3 +1,6 @@
+#ifndef LOGGING_UTIL_STRING_UTIL_H
+#define LOGGING_UTIL_STRING_UTIL_H
+
 /**
  * @file string_util.h
  * @brief Comprehensive string utility functions for the XSigma Core library
@@ -11,7 +14,6 @@
  * @date 2024
  */
 
-#pragma once
 
 #include <stdarg.h>  // for va_list
 
@@ -52,8 +54,7 @@ namespace logging
  * auto name = enum_to_string(Color::Red); // Returns "Red"
  * @endcode
  */
-template <typename E>
-inline std::string enum_to_string(E x)
+template <typename E> inline std::string enum_to_string(E x)
 {
     return std::string(magic_enum::enum_name(x));
 }
@@ -71,8 +72,7 @@ inline std::string enum_to_string(E x)
  * auto color = string_to_enum<Color>("red"); // Returns Color::Red
  * @endcode
  */
-template <typename E>
-E string_to_enum(std::string_view str)
+template <typename E> E string_to_enum(std::string_view str)
 {
     return magic_enum::enum_cast<E>(str, magic_enum::case_insensitive).value();
 }
@@ -87,8 +87,7 @@ namespace logging
  * @return String containing the numeric representation
  * @note This is a fallback implementation when magic_enum is not available
  */
-template <typename E>
-inline std::string enum_to_string(E x)
+template <typename E> inline std::string enum_to_string(E x)
 {
     return std::to_string(static_cast<int>(x));
 }
@@ -101,8 +100,7 @@ inline std::string enum_to_string(E x)
  * @throws std::invalid_argument if the string is not a valid integer
  * @note This is a fallback implementation when magic_enum is not available
  */
-template <typename E>
-E string_to_enum(std::string_view str)
+template <typename E> E string_to_enum(std::string_view str)
 {
     return static_cast<E>(std::stoi(std::string(str)));
 }
@@ -142,8 +140,7 @@ LOGGING_API std::string demangle(const char* name);
  * // Returns "std::vector<double>" or similar
  * @endcode
  */
-template <typename T>
-inline const char* demangle_type()
+template <typename T> inline const char* demangle_type()
 {
 #ifdef __GXX_RTTI
     static const std::string name = demangle(typeid(T).name());
@@ -186,8 +183,7 @@ struct LOGGING_VISIBILITY source_location
  */
 LOGGING_API size_t replace_all(std::string& s, const char* from, const char* to);
 
-LOGGING_API void erase_all_sub_string(
-    std::string& mainStr, std::string_view const& toErase) noexcept;
+LOGGING_API void erase_all_sub_string(std::string& mainStr, std::string_view const& toErase);
 // =============================================================================
 // C++20 COMPATIBILITY UTILITIES
 // =============================================================================
@@ -268,8 +264,7 @@ LOGGING_API std::string vformat(std::string_view format_str, const std::string* 
  * auto msg = format("Check failed: {} - {}", cond_str, user_msg);
  * @endcode
  */
-template <typename... Args>
-std::string format(std::string_view format_str, const Args&... args);
+template <typename... Args> std::string format(std::string_view format_str, const Args&... args);
 
 /**
  * @brief Padding specification for hexadecimal formatting
@@ -308,8 +303,7 @@ enum class hex_pad
  * auto hex3 = format_hex(0x1234, hex_pad::pad8);      // Returns "00001234"
  * @endcode
  */
-template <typename Int>
-std::string format_hex(Int value, hex_pad padding = hex_pad::none);
+template <typename Int> std::string format_hex(Int value, hex_pad padding = hex_pad::none);
 
 /**
  * @brief Concatenate multiple values into a single string
@@ -325,8 +319,7 @@ std::string format_hex(Int value, hex_pad padding = hex_pad::none);
  * auto str3 = str_cat("Pi: ", 3.14159);                 // Returns "Pi: 3.14159"
  * @endcode
  */
-template <typename... Args>
-std::string str_cat(const Args&... args);
+template <typename... Args> std::string str_cat(const Args&... args);
 
 /**
  * @brief Append multiple values to an existing string
@@ -341,8 +334,7 @@ std::string str_cat(const Args&... args);
  * str_append(&s, " ", "Middle", " ", 123);  // s becomes "Start Middle 123"
  * @endcode
  */
-template <typename... Args>
-void str_append(std::string* result, const Args&... args);
+template <typename... Args> void str_append(std::string* result, const Args&... args);
 
 /**
  * @brief Check if a string contains a specific character
@@ -418,8 +410,7 @@ inline std::enable_if_t<std::is_floating_point_v<T>> to_string_helper(
 }
 
 // Convert a single value to its string form, for format()'s placeholders
-template <typename T>
-inline std::string to_string_one(const T& value)
+template <typename T> inline std::string to_string_one(const T& value)
 {
     std::ostringstream oss;
     to_string_helper(oss, value);
@@ -427,8 +418,7 @@ inline std::string to_string_one(const T& value)
 }
 }  // namespace internal
 
-template <typename... Args>
-std::string format(std::string_view format_str, const Args&... args)
+template <typename... Args> std::string format(std::string_view format_str, const Args&... args)
 {
     if constexpr (sizeof...(Args) == 0)
     {
@@ -441,8 +431,7 @@ std::string format(std::string_view format_str, const Args&... args)
     }
 }
 
-template <typename Int>
-std::string format_hex(Int value, hex_pad padding)
+template <typename Int> std::string format_hex(Int value, hex_pad padding)
 {
     // Prevent sign-extension by casting to unsigned types
     static_assert(
@@ -468,16 +457,14 @@ std::string format_hex(Int value, hex_pad padding)
     return oss.str();
 }
 
-template <typename... Args>
-std::string str_cat(const Args&... args)
+template <typename... Args> std::string str_cat(const Args&... args)
 {
     std::ostringstream oss;
     (internal::to_string_helper(oss, args), ...);
     return oss.str();
 }
 
-template <typename... Args>
-void str_append(std::string* result, const Args&... args)
+template <typename... Args> void str_append(std::string* result, const Args&... args)
 {
     if (result == nullptr)
     {
@@ -492,8 +479,7 @@ void str_append(std::string* result, const Args&... args)
 LOGGING_FORCE_INLINE std::string to_lower(std::string_view input)
 {
     std::string result(input);
-    std::transform(
-        result.begin(),
+    std::transform(result.begin(),
         result.end(),
         result.begin(),
         [](unsigned char c) { return std::tolower(c); });
@@ -501,3 +487,4 @@ LOGGING_FORCE_INLINE std::string to_lower(std::string_view input)
 }
 }  // namespace strings
 }  // namespace logging
+#endif  // LOGGING_UTIL_STRING_UTIL_H
