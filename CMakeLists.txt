@@ -614,20 +614,20 @@ if(LOGGING_DEPENDENCY_INCLUDE_DIRS)
 endif()
 
 if(TARGET Fmt::fmt)
-  list(APPEND LOGGING_DEPENDENCY_LIBS Fmt::fmt)
+  list(APPEND LOGGING_DEPENDENCY_LIBS $<BUILD_INTERFACE:Fmt::fmt>)
 endif()
 # MagicEnum::magic_enum deliberately excluded from LOGGING_DEPENDENCY_LIBS
 # (PRIVATE, see above) -- it needs to be a PUBLIC include dir instead; see
 # LOGGING_MAGICENUM_INCLUDE_DIR near the main target_include_directories()
 # call and the header install below.
 if(TARGET Loguru::loguru)
-  list(APPEND LOGGING_DEPENDENCY_LIBS Loguru::loguru)
+  list(APPEND LOGGING_DEPENDENCY_LIBS $<BUILD_INTERFACE:Loguru::loguru>)
 endif()
 if(TARGET Glog::glog)
-  list(APPEND LOGGING_DEPENDENCY_LIBS Glog::glog)
+  list(APPEND LOGGING_DEPENDENCY_LIBS $<BUILD_INTERFACE:Glog::glog>)
 endif()
 if(TARGET Spdlog::spdlog)
-  list(APPEND LOGGING_DEPENDENCY_LIBS Spdlog::spdlog)
+  list(APPEND LOGGING_DEPENDENCY_LIBS $<BUILD_INTERFACE:Spdlog::spdlog>)
 endif()
 
 if(LOGGING_ENABLE_CLANGTIDY)
