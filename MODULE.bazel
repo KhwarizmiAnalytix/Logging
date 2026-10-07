@@ -3,6 +3,15 @@ module(
     version = "1.0.0",
 )
 
-bazel_dep(name = "rules_cc", version = "0.1.1")
+bazel_dep(name = "rules_cc", version = "0.2.17")
 bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
+
+# Header-only magic_enum and runtime glog backend.
+bazel_dep(name = "magic_enum", version = "0.9.8")
+bazel_dep(name = "glog", version = "0.7.1")
+bazel_dep(name = "gflags", version = "2.2.2")
+
+# fmt, loguru, spdlog are vendored without MODULE.bazel — created via extension.
+vendor = use_extension("//bazel:vendor_deps.bzl", "vendor_deps")
+use_repo(vendor, "fmt", "loguru", "spdlog")
