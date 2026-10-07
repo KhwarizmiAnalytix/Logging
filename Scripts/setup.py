@@ -634,6 +634,8 @@ class LoggingFlags:
 
 
 class LoggingConfiguration:
+    """Drives config/build/test/coverage for Logging from parsed dotted-token args."""
+
     def __init__(self, args_list):
         missing_deps = check_dependencies()
         if missing_deps:
@@ -931,6 +933,7 @@ def parse_args(args):
 
 
 def main():
+    """Parse CLI args and drive config/build/test/coverage, or print --help."""
     if len(sys.argv) == 2 and sys.argv[1] == "--help":
         print_status("Logging Build Configuration Helper", "INFO")
         print("\n" + "=" * 80)

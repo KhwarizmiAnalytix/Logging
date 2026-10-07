@@ -192,7 +192,7 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.mypy_linter',
-    '--config=pyproject.toml',
+    '--config=mypy.ini',
     '--',
     '@{{PATHSFILE}}',
 ]
@@ -219,8 +219,8 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.mypy_linter',
-    '--config=pyproject.toml',
-    '--strict',
+    '--config=mypy-strict.ini',
+    '--code=MYPYSTRICT',
     '--',
     '@{{PATHSFILE}}',
 ]
@@ -302,9 +302,7 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.pyrefly_linter',
-    '--config=pyproject.toml',
-    '--',
-    '@{{PATHSFILE}}',
+    '--config=pyrefly.toml',
 ]
 
 [[linter]]
@@ -757,22 +755,15 @@ command = [
 
 [[linter]]
 code = 'TYPENOSKIP'
-include_patterns = ['**/*.py']
-exclude_patterns = [
-    'ThirdParty/**',
-    '.git/**',
-    'build/**',
-    '__pycache__/**',
-    'Scripts/iwyu/**',
-]
+include_patterns = ['mypy.ini']
 command = [
     'python3',
     '-m',
     'lint_tool.adapters.grep_linter',
-    '--pattern=no_skip_libs|no_skip_check',
+    '--pattern=follow_imports\s*=\s*skip',
     '--linter-name=TYPENOSKIP',
-    '--error-name=type skip configured',
-    '--error-description=File has type skip configuration.',
+    '--error-name=use of follow_imports = skip',
+    '--error-description=follow_imports = skip is forbidden from mypy.ini; it is too easy to accidentally turn off type checking. Use a top level # mypy: ignore-errors or per-site # type: ignore instead.',
     '--',
     '@{{PATHSFILE}}',
 ]
