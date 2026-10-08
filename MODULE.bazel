@@ -6,6 +6,7 @@ module(
 bazel_dep(name = "rules_cc", version = "0.2.17")
 bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "rules_pkg", version = "1.0.1")
 
 # Header-only magic_enum and runtime glog backend.
 bazel_dep(name = "magic_enum", version = "0.9.8")

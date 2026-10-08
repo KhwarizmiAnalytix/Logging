@@ -1,6 +1,9 @@
 # Standalone logging library. Include root is the repository root; public headers live
 # under include/ (e.g. #include "include/logging.h", "include/logger/logger.h").
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
+load("@rules_pkg//pkg:pkg.bzl", "pkg_tar")
 load("//bazel:logging.bzl", "logging_copts", "logging_defines", "logging_linkopts")
 
 package(default_visibility = ["//visibility:public"])
@@ -85,4 +88,53 @@ cc_library(
     name = "Logging",
     deps = [":logging_lib"],
     visibility = ["//visibility:public"],
+)
+
+# =============================================================================
+# Install / export (bazel-side analogue of CMake's `install(TARGETS Logging
+# ...)` / `install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+# ...)`). CMake installs include/'s *contents* flattened directly under
+# <prefix>/include (common/, logger/, util/, backend/, logging.h) -- not
+# nested under an extra "Logging/include/" -- so the Bazel destination
+# mirrors that same flattened "include" prefix.
+# `bazel build //:logging_pkg_tar` produces a relocatable tarball; `bazel run
+# //:install -- --destdir=/some/prefix` stages the same tree directly on disk.
+# =============================================================================
+
+pkg_files(
+    name = "logging_installed_hdrs",
+    srcs = glob(
+        [
+            "include/*.h",
+            "include/common/*.h",
+            "include/util/*.h",
+            "include/logger/*.h",
+            "include/backend/*.h",
+        ],
+        allow_empty = True,
+    ),
+    prefix = "include",
+    strip_prefix = strip_prefix.from_pkg("include"),
+)
+
+pkg_files(
+    name = "logging_installed_libs",
+    srcs = [":logging_lib"],
+    prefix = "lib",
+)
+
+pkg_tar(
+    name = "logging_pkg_tar",
+    srcs = [
+        ":logging_installed_hdrs",
+        ":logging_installed_libs",
+    ],
+)
+
+pkg_install(
+    name = "install",
+    srcs = [
+        ":logging_installed_hdrs",
+        ":logging_installed_libs",
+    ],
 )
