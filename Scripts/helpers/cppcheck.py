@@ -10,7 +10,7 @@ from typing import Optional
 
 # Source directories that make up the Logging library (mirrors CMakeLists.txt's
 # GLOB_RECURSE root minus Testing/ and ThirdParty/).
-_SOURCE_DIRS = ["common", "logger", "util"]
+_SOURCE_DIRS = ["src", "include"]
 
 
 @dataclass
