@@ -28,9 +28,9 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
-else()
+else ()
   set(LOGGING_STANDALONE OFF)
-endif()
+endif ()
 
 # Own CMake modules: toolchain helpers (lto/cache/sanitize/...), the
 # add_third_party_library machinery (third_party_helpers.cmake), and test
@@ -110,12 +110,12 @@ set(LOGGING_DEFAULT_EXCEPTION_MODE "THROW"
     CACHE STRING "Default exception mode for Logging: THROW or LOG_FATAL"
 )
 set_property(CACHE LOGGING_DEFAULT_EXCEPTION_MODE PROPERTY STRINGS THROW LOG_FATAL)
-if(NOT LOGGING_DEFAULT_EXCEPTION_MODE MATCHES "^(THROW|LOG_FATAL)$")
-  message(FATAL_ERROR "LOGGING_DEFAULT_EXCEPTION_MODE must be THROW or LOG_FATAL")
-endif()
-if(LOGGING_ENABLE_CXA_DEMANGLE AND NOT LOGGING_HAS_CXA_DEMANGLE_AVAILABLE)
-  message(FATAL_ERROR "LOGGING_ENABLE_CXA_DEMANGLE requires a toolchain with <cxxabi.h>")
-endif()
+if (NOT LOGGING_DEFAULT_EXCEPTION_MODE MATCHES "^(THROW|LOG_FATAL)$")
+message(FATAL_ERROR "LOGGING_DEFAULT_EXCEPTION_MODE must be THROW or LOG_FATAL")
+endif ()
+if (LOGGING_ENABLE_CXA_DEMANGLE AND NOT LOGGING_HAS_CXA_DEMANGLE_AVAILABLE)
+message(FATAL_ERROR "LOGGING_ENABLE_CXA_DEMANGLE requires a toolchain with <cxxabi.h>")
+endif ()
 
 # Icecream distributed compilation launcher (rarely needed; hidden by default).
 option(LOGGING_ENABLE_ICECC "Use Icecream (icecc) distributed compiler for Logging" OFF)
@@ -156,13 +156,13 @@ mark_as_advanced(LOGGING_CACHE_BACKEND)
 # C++ standard — applied to every TU in this module via CMAKE_CXX_STANDARD.
 set(LOGGING_CXX_STANDARD "20" CACHE STRING "C++ standard for Logging. Options: 11 14 17 20 23")
 set_property(CACHE LOGGING_CXX_STANDARD PROPERTY STRINGS 11 14 17 20 23)
-if(NOT LOGGING_CXX_STANDARD MATCHES "^(11|14|17|20|23)$")
-  message(FATAL_ERROR "LOGGING_CXX_STANDARD must be one of: 11 14 17 20 23")
-endif()
-if(LOGGING_FORMAT_USE_STD AND LOGGING_CXX_STANDARD LESS 20)
-  message(FATAL_ERROR "LOGGING_FORMAT_USE_STD requires LOGGING_CXX_STANDARD to be at least 20")
-endif()
-if(LOGGING_FORMAT_USE_STD)
+if (NOT LOGGING_CXX_STANDARD MATCHES "^(11|14|17|20|23)$")
+message(FATAL_ERROR "LOGGING_CXX_STANDARD must be one of: 11 14 17 20 23")
+endif ()
+if (LOGGING_FORMAT_USE_STD AND LOGGING_CXX_STANDARD LESS 20)
+message(FATAL_ERROR "LOGGING_FORMAT_USE_STD requires LOGGING_CXX_STANDARD to be at least 20")
+endif ()
+if (LOGGING_FORMAT_USE_STD)
   set(CMAKE_CXX_STANDARD ${LOGGING_CXX_STANDARD})
   check_cxx_source_compiles(
     "
@@ -175,10 +175,10 @@ if(LOGGING_FORMAT_USE_STD)
     LOGGING_HAS_STD_FORMAT_AVAILABLE
   )
   mark_as_advanced(LOGGING_HAS_STD_FORMAT_AVAILABLE)
-  if(NOT LOGGING_HAS_STD_FORMAT_AVAILABLE)
-    message(FATAL_ERROR "LOGGING_FORMAT_USE_STD requires a standard library with std::format")
-  endif()
-endif()
+if (NOT LOGGING_HAS_STD_FORMAT_AVAILABLE)
+message(FATAL_ERROR "LOGGING_FORMAT_USE_STD requires a standard library with std::format")
+endif ()
+endif ()
 
 # --- Section 2: LOGGING_ENABLE_* → LOGGING_HAS_* compile definitions --- Exactly one HAS_* will be
 # 1; the others 0.
@@ -209,38 +209,38 @@ elseif(LOGGING_BACKEND STREQUAL "SPDLOG")
     LOGGING_HAS_SPDLOG=1
     SPDLOG_FMT_EXTERNAL=1
   )
-else()
-  message(
+else ()
+message(
     FATAL_ERROR
       "LOGGING_BACKEND must be one of: NATIVE, LOGURU, GLOG, SPDLOG (got '${LOGGING_BACKEND}')"
   )
-endif()
+endif ()
 list(APPEND LOGGING_DEPENDENCY_COMPILE_DEFINITIONS ${LOGGING_COMPILE_DEFINITIONS})
-if(LOGGING_ENABLE_MAGICENUM)
+if (LOGGING_ENABLE_MAGICENUM)
   list(APPEND LOGGING_DEPENDENCY_COMPILE_DEFINITIONS LOGGING_HAS_MAGICENUM=1)
-else()
+else ()
   list(APPEND LOGGING_DEPENDENCY_COMPILE_DEFINITIONS LOGGING_HAS_MAGICENUM=0)
-endif()
-if(LOGGING_ENABLE_CXA_DEMANGLE)
+endif ()
+if (LOGGING_ENABLE_CXA_DEMANGLE)
   list(APPEND LOGGING_DEPENDENCY_COMPILE_DEFINITIONS LOGGING_HAS_CXA_DEMANGLE=1)
-else()
+else ()
   list(APPEND LOGGING_DEPENDENCY_COMPILE_DEFINITIONS LOGGING_HAS_CXA_DEMANGLE=0)
-endif()
-if(LOGGING_ENABLE_PORTABLE_FLOAT_FORMAT)
+endif ()
+if (LOGGING_ENABLE_PORTABLE_FLOAT_FORMAT)
   list(APPEND LOGGING_DEPENDENCY_COMPILE_DEFINITIONS LOGGING_PORTABLE_FLOAT_FORMAT=1)
-else()
+else ()
   list(APPEND LOGGING_DEPENDENCY_COMPILE_DEFINITIONS LOGGING_PORTABLE_FLOAT_FORMAT=0)
-endif()
-if(LOGGING_FORMAT_USE_STD)
+endif ()
+if (LOGGING_FORMAT_USE_STD)
   list(APPEND LOGGING_DEPENDENCY_COMPILE_DEFINITIONS LOGGING_FORMAT_USE_STD=1)
-else()
+else ()
   list(APPEND LOGGING_DEPENDENCY_COMPILE_DEFINITIONS LOGGING_FORMAT_USE_STD=0)
-endif()
-if(LOGGING_DEFAULT_EXCEPTION_MODE STREQUAL "LOG_FATAL")
+endif ()
+if (LOGGING_DEFAULT_EXCEPTION_MODE STREQUAL "LOG_FATAL")
   list(APPEND LOGGING_DEPENDENCY_COMPILE_DEFINITIONS LOGGING_DEFAULT_EXCEPTION_MODE_LOG_FATAL=1)
-else()
+else ()
   list(APPEND LOGGING_DEPENDENCY_COMPILE_DEFINITIONS LOGGING_DEFAULT_EXCEPTION_MODE_LOG_FATAL=0)
-endif()
+endif ()
 
 # --- Section 3: CMake module includes --- Order: introspection → toolchain helpers →
 # coverage/sanitizer → LTO/linker.
@@ -258,22 +258,22 @@ include(platform) # Platform flags (macOS rpath, Windows /utf-8, …)
 include(cache) # Configures per-target compiler cache launcher
 include(CMakeDependentOption)
 include(helper_macros)
-if(LOGGING_ENABLE_SANITIZER)
+if (LOGGING_ENABLE_SANITIZER)
   include(sanitize)
-endif()
-if(LOGGING_ENABLE_SPELL)
+endif ()
+if (LOGGING_ENABLE_SPELL)
   include(spell)
-endif()
-if(LOGGING_ENABLE_VALGRIND)
+endif ()
+if (LOGGING_ENABLE_VALGRIND)
   include(valgrind)
-endif()
+endif ()
 # c) Coverage gate — appends -fprofile-instr-generate / --coverage; LTO already cleared above.
 if(LOGGING_ENABLE_COVERAGE)
   include(coverage)
 elseif(MSVC)
   string(APPEND CMAKE_EXE_LINKER_FLAGS " /DEBUG:FULL")
   string(APPEND CMAKE_SHARED_LINKER_FLAGS " /DEBUG:FULL")
-endif()
+endif ()
 
 # --- Third-party dependencies owned by Logging ---
 # Host (XSigma) ThirdParty vs this repo's nested ThirdParty/.
@@ -286,25 +286,25 @@ set(_logging_host_tp "${CMAKE_SOURCE_DIR}/ThirdParty")
 
 macro(_logging_tp_root _component _out)
   set(_logging_prefer_nested FALSE)
-  if("${_component}" STREQUAL "glog"
+if ("${_component}" STREQUAL "glog"
      OR "${_component}" STREQUAL "loguru"
      OR "${_component}" STREQUAL "spdlog")
     set(_logging_prefer_nested TRUE)
-  endif()
+endif ()
   set(${_out} "")
-  if(_logging_prefer_nested AND EXISTS "${_logging_own_tp}/${_component}/CMakeLists.txt")
+if (_logging_prefer_nested AND EXISTS "${_logging_own_tp}/${_component}/CMakeLists.txt")
     set(${_out} "${_logging_own_tp}")
   elseif(EXISTS "${_logging_host_tp}/${_component}/CMakeLists.txt")
     set(${_out} "${_logging_host_tp}")
   elseif(EXISTS "${_logging_own_tp}/${_component}/CMakeLists.txt")
     set(${_out} "${_logging_own_tp}")
-  else()
-    message(
+else ()
+message(
       FATAL_ERROR
       "Logging cannot find ThirdParty/${_component} under "
       "${_logging_own_tp} or ${_logging_host_tp}"
     )
-  endif()
+endif ()
 endmacro()
 
 _logging_tp_root(fmt _tp_fmt)
@@ -363,7 +363,7 @@ add_third_party_library(
 # fmt is used by Logging source files directly; Fmt::fmt is not available here (it is created by
 # Core, which is processed after Logging).
 list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_fmt}/fmt/include")
-if(LOGGING_ENABLE_MAGICENUM)
+if (LOGGING_ENABLE_MAGICENUM)
   set(MAGIC_ENUM_OPT_BUILD_EXAMPLES OFF CACHE BOOL "Disable magic_enum examples" FORCE)
   set(MAGIC_ENUM_OPT_BUILD_TESTS OFF CACHE BOOL "Disable magic_enum tests" FORCE)
   add_third_party_library(
@@ -391,8 +391,8 @@ if(LOGGING_ENABLE_MAGICENUM)
   # into our own install tree (see the "--- Installation ---" section)
   # rather than exporting a separate magic_enum package dependency.
   set(LOGGING_MAGICENUM_INCLUDE_DIR "${_tp_magic_enum}/magic_enum/include")
-endif()
-if(LOGGING_BACKEND STREQUAL "LOGURU")
+endif ()
+if (LOGGING_BACKEND STREQUAL "LOGURU")
   add_third_party_library(
     loguru
     LIBRARY_TYPE
@@ -409,15 +409,15 @@ if(LOGGING_BACKEND STREQUAL "LOGURU")
     AUTO_ADD_TO_DEPENDENCIES
     OFF
   )
-  if(TARGET loguru)
+if (TARGET loguru)
     set_property(TARGET loguru PROPERTY POSITION_INDEPENDENT_CODE ON)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
       target_compile_options(loguru PRIVATE -Wno-format-truncation)
-    endif()
-  endif()
+endif ()
+endif ()
   list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_loguru}/loguru")
-endif()
-if(LOGGING_BACKEND STREQUAL "GLOG")
+endif ()
+if (LOGGING_BACKEND STREQUAL "GLOG")
   add_third_party_library(
     glog
     LIBRARY_TYPE
@@ -448,9 +448,9 @@ if(LOGGING_BACKEND STREQUAL "GLOG")
   # breaking the build. Only add it when the bundled copy is the one in use.
   if(TARGET glog)
     list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_glog}/glog/src")
-  endif()
-endif()
-if(LOGGING_BACKEND STREQUAL "SPDLOG")
+endif ()
+endif ()
+if (LOGGING_BACKEND STREQUAL "SPDLOG")
   # spdlog as HEADER_ONLY: add_third_party_library only skips compilation for LIBRARY_TYPE
   # HEADER_ONLY (INTERFACE is treated as "default" and would add_subdirectory + build spdlog).
   add_third_party_library(
@@ -467,7 +467,7 @@ if(LOGGING_BACKEND STREQUAL "SPDLOG")
     OFF
   )
   list(APPEND LOGGING_DEPENDENCY_INCLUDE_DIRS "${_tp_spdlog}/spdlog/include")
-endif()
+endif ()
 
 # --- Explicit source and header lists (Phase B: replacing glob pattern) ---
 # Headers: Public API and internal headers
@@ -521,36 +521,33 @@ set(CMAKE_CXX_STANDARD ${LOGGING_CXX_STANDARD})
 
 add_library(Logging ${logging_sources} ${logging_headers})
 xsigma_target_apply_lto(Logging LOGGING)
-if(LOGGING_ENABLE_SANITIZER)
-  xsigma_configure_sanitizer(LOGGING)
-endif()
+if (LOGGING_ENABLE_SANITIZER)
+xsigma_configure_sanitizer(LOGGING)
+endif ()
 xsigma_find_linker(${LOGGING_LINKER_CHOICE} Logging LOGGING_LTO_MODE)
 xsigma_target_apply_cache(Logging LOGGING_ENABLE_CACHE LOGGING_CACHE_BACKEND)
 xsigma_target_optional_icecc(Logging LOGGING_ENABLE_ICECC)
-
-if(BUILD_SHARED_LIBS)
+if (BUILD_SHARED_LIBS)
   target_compile_definitions(Logging PUBLIC LOGGING_SHARED_DEFINE PRIVATE LOGGING_BUILDING_DLL)
-  if(COMMAND xsigma_set_target_output_directories)
-    xsigma_set_target_output_directories(Logging)
-  endif()
-else()
+if (COMMAND xsigma_set_target_output_directories)
+xsigma_set_target_output_directories(Logging)
+endif ()
+else ()
   target_compile_definitions(Logging PUBLIC LOGGING_STATIC_DEFINE)
-endif()
+endif ()
 
 add_library(Logging::Logging ALIAS Logging)
-
 xsigma_module_create_filters("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set_target_properties(
   Logging PROPERTIES CXX_STANDARD ${LOGGING_CXX_STANDARD} CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS
                                                                                    OFF
 )
-
-if(MSVC)
+if (MSVC)
   target_compile_options(Logging PRIVATE /WX)
-else()
+else ()
   target_compile_options(Logging PRIVATE -include cstdlib)
-endif()
+endif ()
 
 # Clang-on-Windows (GNU driver + CodeView) can ICE in codegen when instantiating spdlog at -O3.
 if(WIN32
@@ -561,7 +558,7 @@ if(WIN32
   target_compile_options(
     Logging PRIVATE $<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:MinSizeRel>>:-O1>
   )
-endif()
+endif ()
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/Testing/LoggingTest.h.in"
@@ -597,66 +594,59 @@ target_include_directories(
          $<INSTALL_INTERFACE:include/logger>
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
-if(LOGGING_ENABLE_MAGICENUM)
+if (LOGGING_ENABLE_MAGICENUM)
   target_include_directories(
     Logging PUBLIC $<BUILD_INTERFACE:${LOGGING_MAGICENUM_INCLUDE_DIR}>
                     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
-endif()
-
-if(LOGGING_DEPENDENCY_INCLUDE_DIRS)
+endif ()
+if (LOGGING_DEPENDENCY_INCLUDE_DIRS)
   # PRIVATE: none of fmt/loguru/glog/spdlog's types appear in
   # Logging's own public headers (fmt is confined to string_util.cpp; the
   # active backend is an implementation detail behind logger::), so a
   # consumer linking Logging::Logging never needs these on their own include
   # path, and the installed package doesn't need to separately export them.
   target_include_directories(Logging PRIVATE ${LOGGING_DEPENDENCY_INCLUDE_DIRS})
-endif()
-
-if(TARGET Fmt::fmt)
+endif ()
+if (TARGET Fmt::fmt)
   list(APPEND LOGGING_DEPENDENCY_LIBS $<BUILD_INTERFACE:Fmt::fmt>)
-endif()
+endif ()
 # MagicEnum::magic_enum deliberately excluded from LOGGING_DEPENDENCY_LIBS
 # (PRIVATE, see above) -- it needs to be a PUBLIC include dir instead; see
 # LOGGING_MAGICENUM_INCLUDE_DIR near the main target_include_directories()
 # call and the header install below.
 if(TARGET Loguru::loguru)
   list(APPEND LOGGING_DEPENDENCY_LIBS $<BUILD_INTERFACE:Loguru::loguru>)
-endif()
-if(TARGET Glog::glog)
+endif ()
+if (TARGET Glog::glog)
   list(APPEND LOGGING_DEPENDENCY_LIBS $<BUILD_INTERFACE:Glog::glog>)
-endif()
-if(TARGET Spdlog::spdlog)
+endif ()
+if (TARGET Spdlog::spdlog)
   list(APPEND LOGGING_DEPENDENCY_LIBS $<BUILD_INTERFACE:Spdlog::spdlog>)
-endif()
-
-if(LOGGING_ENABLE_CLANGTIDY)
+endif ()
+if (LOGGING_ENABLE_CLANGTIDY)
   include(clang_tidy)
-  xsigma_target_clang_tidy(Logging ${LOGGING_ENABLE_FIX})
-endif()
-
-if(LOGGING_ENABLE_IWYU)
+xsigma_target_clang_tidy(Logging ${LOGGING_ENABLE_FIX})
+endif ()
+if (LOGGING_ENABLE_IWYU)
   include(iwyu)
-  xsigma_apply_iwyu(Logging)
-endif()
-
-if(LOGGING_DEPENDENCY_LIBS)
+xsigma_apply_iwyu(Logging)
+endif ()
+if (LOGGING_DEPENDENCY_LIBS)
   # PRIVATE for the same reason as the include dirs above: these are
   # implementation details, not part of Logging's interface. Keeping them
   # PRIVATE also keeps them out of the exported LoggingTargets.cmake, so
   # find_package(Logging) in a downstream project never needs to separately
   # locate/export fmt, loguru, glog, spdlog, or magic_enum.
   target_link_libraries(Logging PRIVATE ${LOGGING_DEPENDENCY_LIBS})
-endif()
-
-if(LOGGING_DEPENDENCY_COMPILE_DEFINITIONS)
+endif ()
+if (LOGGING_DEPENDENCY_COMPILE_DEFINITIONS)
   target_compile_definitions(Logging PUBLIC ${LOGGING_DEPENDENCY_COMPILE_DEFINITIONS})
-endif()
-
-if(WIN32)
+endif ()
+if (WIN32)
   # Own the DbgHelp dependency in the build system; do not rely on a source pragma.
   target_link_libraries(Logging PRIVATE dbghelp)
-endif()
+endif ()
 
 # --- Installation ---
 install(
@@ -679,7 +669,7 @@ install(
   FILES_MATCHING
   PATTERN "*.h"
 )
-if(LOGGING_ENABLE_MAGICENUM)
+if (LOGGING_ENABLE_MAGICENUM)
   # include/util/string_util.h (public) includes <magic_enum/magic_enum.hpp>
   # directly -- physically copy magic_enum's headers into our own install
   # tree rather than exporting it as a separate find_package dependency
@@ -691,7 +681,7 @@ if(LOGGING_ENABLE_MAGICENUM)
     FILES_MATCHING
     PATTERN "*.hpp"
   )
-endif()
+endif ()
 
 # --- CMake package config (find_package(Logging) support) ---
 # LOGGING_DEPENDENCY_LIBS (fmt/loguru/glog/spdlog) are linked
@@ -734,46 +724,45 @@ install(
 # --- Testing ---
 if(LOGGING_ENABLE_TESTING)
   add_subdirectory(Testing/Cxx)
-endif()
-
-if(LOGGING_ENABLE_VALGRIND AND LOGGING_ENABLE_TESTING)
-  xsigma_apply_valgrind_timeouts()
-endif()
+endif ()
+if (LOGGING_ENABLE_VALGRIND AND LOGGING_ENABLE_TESTING)
+xsigma_apply_valgrind_timeouts()
+endif ()
 
 get_property(_logging_summary_backend CACHE LOGGING_BACKEND PROPERTY VALUE)
 message("")
 message("******** Logging module (CMake flags) ********")
-message("  Backend          : ${_logging_summary_backend} (options: SPDLOG, LOGURU, GLOG, NATIVE)")
-message("  Cxx standard     : ${LOGGING_CXX_STANDARD}")
-message("  Cache            : ${LOGGING_ENABLE_CACHE}")
-message("  Cache backend    : ${LOGGING_CACHE_BACKEND}")
-message("  Icecc            : ${LOGGING_ENABLE_ICECC}")
+message("  Backend              : ${_logging_summary_backend} (options: SPDLOG, LOGURU, GLOG, NATIVE)")
+message("  Cxx standard         : ${LOGGING_CXX_STANDARD}")
+message("  Cache                : ${LOGGING_ENABLE_CACHE}")
+message("  Cache backend        : ${LOGGING_CACHE_BACKEND}")
+message("  Icecc                : ${LOGGING_ENABLE_ICECC}")
 xsigma_print_lto_linker_summary(LOGGING)
-message("  Coverage         : ${LOGGING_ENABLE_COVERAGE}")
-message("  Testing          : ${LOGGING_ENABLE_TESTING}")
-message("  Examples         : ${LOGGING_ENABLE_EXAMPLES}")
-message("  Gtest            : ${LOGGING_ENABLE_GTEST}")
-message("  Benchmark        : ${LOGGING_ENABLE_BENCHMARK}")
-message("  Magic enum       : ${LOGGING_ENABLE_MAGICENUM}")
-message("  Cxa demangle     : ${LOGGING_ENABLE_CXA_DEMANGLE}")
-message("  Portable floats  : ${LOGGING_ENABLE_PORTABLE_FLOAT_FORMAT}")
-message("  Std format       : ${LOGGING_FORMAT_USE_STD}")
-message("  Exception mode   : ${LOGGING_DEFAULT_EXCEPTION_MODE}")
-message("  Clang-tidy       : ${LOGGING_ENABLE_CLANGTIDY}")
-message("  Fix              : ${LOGGING_ENABLE_FIX}")
-message("  Iwyu             : ${LOGGING_ENABLE_IWYU}")
-message("  Sanitizer        : ${LOGGING_ENABLE_SANITIZER}")
-message("  Sanitizer type   : ${LOGGING_SANITIZER_TYPE}")
-message("  Spell            : ${LOGGING_ENABLE_SPELL}")
-message("  Valgrind         : ${LOGGING_ENABLE_VALGRIND}")
+message("  Coverage             : ${LOGGING_ENABLE_COVERAGE}")
+message("  Testing              : ${LOGGING_ENABLE_TESTING}")
+message("  Examples             : ${LOGGING_ENABLE_EXAMPLES}")
+message("  Gtest                : ${LOGGING_ENABLE_GTEST}")
+message("  Benchmark            : ${LOGGING_ENABLE_BENCHMARK}")
+message("  Magic enum           : ${LOGGING_ENABLE_MAGICENUM}")
+message("  Cxa demangle         : ${LOGGING_ENABLE_CXA_DEMANGLE}")
+message("  Portable floats      : ${LOGGING_ENABLE_PORTABLE_FLOAT_FORMAT}")
+message("  Std format           : ${LOGGING_FORMAT_USE_STD}")
+message("  Exception mode       : ${LOGGING_DEFAULT_EXCEPTION_MODE}")
+message("  Clang-tidy           : ${LOGGING_ENABLE_CLANGTIDY}")
+message("  Fix                  : ${LOGGING_ENABLE_FIX}")
+message("  Iwyu                 : ${LOGGING_ENABLE_IWYU}")
+message("  Sanitizer            : ${LOGGING_ENABLE_SANITIZER}")
+message("  Sanitizer type       : ${LOGGING_SANITIZER_TYPE}")
+message("  Spell                : ${LOGGING_ENABLE_SPELL}")
+message("  Valgrind             : ${LOGGING_ENABLE_VALGRIND}")
 message("")
 message("Build:")
-message("  Default C++ standard     : ${CMAKE_CXX_STANDARD}")
-message("  C flags                  : ${CMAKE_C_FLAGS}")
-message("  CXX flags                : ${CMAKE_CXX_FLAGS}")
-message("  Shared linker flags      : ${CMAKE_SHARED_LINKER_FLAGS}")
-message("  Static linker flags      : ${CMAKE_STATIC_LINKER_FLAGS}")
-message("  Module linker flags      : ${CMAKE_MODULE_LINKER_FLAGS}")
+message("  Default C++ standard : ${CMAKE_CXX_STANDARD}")
+message("  C flags              : ${CMAKE_C_FLAGS}")
+message("  CXX flags            : ${CMAKE_CXX_FLAGS}")
+message("  Shared linker flags  : ${CMAKE_SHARED_LINKER_FLAGS}")
+message("  Static linker flags  : ${CMAKE_STATIC_LINKER_FLAGS}")
+message("  Module linker flags  : ${CMAKE_MODULE_LINKER_FLAGS}")
 get_directory_property(_summary_compile_defs DIRECTORY ${PROJECT_SOURCE_DIR} COMPILE_DEFINITIONS)
-message("  Top-level compile defs   : ${_summary_compile_defs}")
+message("  Top-level compile defs : ${_summary_compile_defs}")
 message("")
