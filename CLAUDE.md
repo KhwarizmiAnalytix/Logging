@@ -1,10 +1,6 @@
 # Logging
 
-Standalone C++ logging library with LOGURU, SPDLOG, GLOG, and NATIVE
-backends. Source lives in `logging/`; tests live in `Testing/Cxx/`.
-Use namespace `logging` and the existing `LOGGING_*` export macros.
-Preserve the exception modes and throwing APIs in `logging/util/exception.*`.
-Dependencies are under `ThirdParty/`.
+Standalone C++ logging library with LOGURU, SPDLOG, GLOG, and NATIVE backends. Source lives in `logging/`; tests live in `Testing/Cxx/`. Use namespace `logging` and `LOGGING_*` export macros. Dependencies are under `ThirdParty/`.
 
 ## Shared agent guidance
 
@@ -48,17 +44,12 @@ For Bazel, also run from `Scripts/`:
 python3 setup_bazel.py config.build.test
 ```
 
-Select a backend with `--backend.native`, `--backend.glog`, or
-`--backend.spdlog`; the default is LOGURU. CMake and Bazel both have setup
-helpers, but their supported feature flags differ.
-
 ## Test conventions
 
-Follow neighboring Google Test cases and `LoggingTest.h`. Tests use
-`Test*.cpp` under `Testing/Cxx/`; CMake uses a recursive glob while Bazel
-uses a package-local glob. Check exclusions and register new subdirectories
-in both systems. Backend changes need coverage for the affected backend;
-dispatch changes should exercise all four backends.
+Match adjacent test cases and testing framework conventions in the repository.
+Tests use `Test*.cpp` or `Test*.cxx` under `Testing/Cxx/`; CMake uses a recursive glob
+while Bazel uses a package-local glob. Check exclusions and register new subdirectories
+in both systems when adding tests.
 
 ## Verification and scope
 
@@ -71,3 +62,21 @@ changes need frontmatter/link/whitespace validation, not compilation.
 Keep unrelated user edits and dependency sources intact. Share review
 findings in the response or pull request; do not create unsolicited status
 documents. Follow this repository's existing license and contribution policy.
+
+## CMake Configuration Message Alignment
+
+All `message("  LABEL : value")` configuration summary messages in CMakeLists.txt
+and `Cmake/lto.cmake` must align colons at exactly **24 characters from the opening
+quote** (inclusive).
+
+Format: `message("  LABEL{PADDING}: VALUE")`
+- Opening `"`: position 1
+- Two spaces + label + padding: positions 2-23 (22 chars total)
+- Colon `:`: position 24
+
+Example:
+```cmake
+message("  Icecc               : ${LOGGING}_ENABLE_ICECC}")
+```
+
+This ensures all colons in configuration output form a vertical line for readability.
