@@ -656,6 +656,21 @@ install(
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+if(NOT BUILD_SHARED_LIBS AND LOGGING_BACKEND STREQUAL "LOGURU")
+  # loguru is linked PRIVATE above and, for a SHARED Logging, that is enough:
+  # its object code is baked directly into libLogging.so. For a STATIC
+  # Logging, archives never merge in their PRIVATE dependencies' object
+  # code, so an external consumer linking the installed static
+  # Logging::Logging still needs loguru's symbols on the link line -- and
+  # there is no LoguruConfig.cmake to find_dependency() against. Re-install
+  # the archive/header here (once, in Logging itself) and reconstruct the
+  # import in LoggingConfig.cmake.in, so every project vendoring Logging
+  # gets this for free instead of each one re-implementing the fallback.
+  install(TARGETS loguru ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+          LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+  install(FILES "${_tp_loguru}/loguru/loguru.hpp" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/loguru")
+endif()
 # Trailing slash on the source: installs include/'s *contents* (common/,
 # logger/, util/, logging.h) directly under <prefix>/include, matching the
 # INSTALL_INTERFACE "." + "include/logger" search roots set above -- not
@@ -692,6 +707,14 @@ endif ()
 include(CMakePackageConfigHelpers)
 
 set(LOGGING_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/Logging")
+
+# Baked into LoggingConfig.cmake at configure time: tells a consumer's
+# find_package(Logging) whether it must reconstruct Loguru::loguru itself
+# (see the install(TARGETS loguru ...) above and LoggingConfig.cmake.in).
+set(LOGGING_CONFIG_STATIC_LOGURU OFF)
+if(NOT BUILD_SHARED_LIBS AND LOGGING_BACKEND STREQUAL "LOGURU")
+  set(LOGGING_CONFIG_STATIC_LOGURU ON)
+endif()
 
 configure_package_config_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/Cmake/LoggingConfig.cmake.in"
