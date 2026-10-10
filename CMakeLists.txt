@@ -666,6 +666,21 @@ install(
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+if(NOT BUILD_SHARED_LIBS AND LOGGING_BACKEND STREQUAL "LOGURU")
+  # loguru is linked PRIVATE above and, for a SHARED Logging, that is enough:
+  # its object code is baked directly into libLogging.so. For a STATIC
+  # Logging, archives never merge in their PRIVATE dependencies' object
+  # code, so an external consumer linking the installed static
+  # Logging::Logging still needs loguru's symbols on the link line -- and
+  # there is no LoguruConfig.cmake to find_dependency() against. Re-install
+  # the archive/header here (once, in Logging itself) and reconstruct the
+  # import in LoggingConfig.cmake.in, so every project vendoring Logging
+  # gets this for free instead of each one re-implementing the fallback.
+  install(TARGETS loguru ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+          LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+  install(FILES "${_tp_loguru}/loguru/loguru.hpp" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/loguru")
+endif()
 # Trailing slash on the source: installs include/'s *contents* (common/,
 # logger/, util/, logging.h) directly under <prefix>/include, matching the
 # INSTALL_INTERFACE "." + "include/logger" search roots set above -- not
@@ -702,6 +717,14 @@ endif()
 include(CMakePackageConfigHelpers)
 
 set(LOGGING_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/Logging")
+
+# Baked into LoggingConfig.cmake at configure time: tells a consumer's
+# find_package(Logging) whether it must reconstruct Loguru::loguru itself
+# (see the install(TARGETS loguru ...) above and LoggingConfig.cmake.in).
+set(LOGGING_CONFIG_STATIC_LOGURU OFF)
+if(NOT BUILD_SHARED_LIBS AND LOGGING_BACKEND STREQUAL "LOGURU")
+  set(LOGGING_CONFIG_STATIC_LOGURU ON)
+endif()
 
 configure_package_config_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/Cmake/LoggingConfig.cmake.in"
@@ -740,40 +763,42 @@ if(LOGGING_ENABLE_VALGRIND AND LOGGING_ENABLE_TESTING)
   xsigma_apply_valgrind_timeouts()
 endif()
 
-get_property(_logging_summary_backend CACHE LOGGING_BACKEND PROPERTY VALUE)
-message("")
-message("******** Logging module (CMake flags) ********")
-message("  Backend              : ${_logging_summary_backend} (options: SPDLOG, LOGURU, GLOG, NATIVE)")
-message("  Cxx standard       : ${LOGGING_CXX_STANDARD}")
-message("  Cache              : ${LOGGING_ENABLE_CACHE}")
-message("  Cache backend      : ${LOGGING_CACHE_BACKEND}")
-message("  Icecc                : ${LOGGING_ENABLE_ICECC}")
-xsigma_print_lto_linker_summary(LOGGING)
-message("  Coverage             : ${LOGGING_ENABLE_COVERAGE}")
-message("  Testing              : ${LOGGING_ENABLE_TESTING}")
-message("  Examples             : ${LOGGING_ENABLE_EXAMPLES}")
-message("  Gtest                : ${LOGGING_ENABLE_GTEST}")
-message("  Benchmark            : ${LOGGING_ENABLE_BENCHMARK}")
-message("  Magic enum           : ${LOGGING_ENABLE_MAGICENUM}")
-message("  Cxa demangle         : ${LOGGING_ENABLE_CXA_DEMANGLE}")
-message("  Portable floats      : ${LOGGING_ENABLE_PORTABLE_FLOAT_FORMAT}")
-message("  Std format           : ${LOGGING_FORMAT_USE_STD}")
-message("  Exception mode       : ${LOGGING_DEFAULT_EXCEPTION_MODE}")
-message("  Clang-tidy           : ${LOGGING_ENABLE_CLANGTIDY}")
-message("  Fix                  : ${LOGGING_ENABLE_FIX}")
-message("  Iwyu                 : ${LOGGING_ENABLE_IWYU}")
-message("  Sanitizer            : ${LOGGING_ENABLE_SANITIZER}")
-message("  Sanitizer type       : ${LOGGING_SANITIZER_TYPE}")
-message("  Spell                : ${LOGGING_ENABLE_SPELL}")
-message("  Valgrind             : ${LOGGING_ENABLE_VALGRIND}")
-message("")
-message("Build:")
-message("  Default C++ standard : ${CMAKE_CXX_STANDARD}")
-message("  C flags              : ${CMAKE_C_FLAGS}")
-message("  CXX flags            : ${CMAKE_CXX_FLAGS}")
-message("  Shared linker flags  : ${CMAKE_SHARED_LINKER_FLAGS}")
-message("  Static linker flags  : ${CMAKE_STATIC_LINKER_FLAGS}")
-message("  Module linker flags  : ${CMAKE_MODULE_LINKER_FLAGS}")
-get_directory_property(_summary_compile_defs DIRECTORY ${PROJECT_SOURCE_DIR} COMPILE_DEFINITIONS)
-message("  Top-level compile defs : ${_summary_compile_defs}")
-message("")
+if(LOGGING_STANDALONE)
+  get_property(_logging_summary_backend CACHE LOGGING_BACKEND PROPERTY VALUE)
+  message("")
+  message("******** Logging module (CMake flags) ********")
+  message("  Backend              : ${_logging_summary_backend} (options: SPDLOG, LOGURU, GLOG, NATIVE)")
+  message("  Cxx standard         : ${LOGGING_CXX_STANDARD}")
+  message("  Cache                : ${LOGGING_ENABLE_CACHE}")
+  message("  Cache backend        : ${LOGGING_CACHE_BACKEND}")
+  message("  Icecc                : ${LOGGING_ENABLE_ICECC}")
+  xsigma_print_lto_linker_summary(LOGGING)
+  message("  Coverage             : ${LOGGING_ENABLE_COVERAGE}")
+  message("  Testing              : ${LOGGING_ENABLE_TESTING}")
+  message("  Examples             : ${LOGGING_ENABLE_EXAMPLES}")
+  message("  Gtest                : ${LOGGING_ENABLE_GTEST}")
+  message("  Benchmark            : ${LOGGING_ENABLE_BENCHMARK}")
+  message("  Magic enum           : ${LOGGING_ENABLE_MAGICENUM}")
+  message("  Cxa demangle         : ${LOGGING_ENABLE_CXA_DEMANGLE}")
+  message("  Portable floats      : ${LOGGING_ENABLE_PORTABLE_FLOAT_FORMAT}")
+  message("  Std format           : ${LOGGING_FORMAT_USE_STD}")
+  message("  Exception mode       : ${LOGGING_DEFAULT_EXCEPTION_MODE}")
+  message("  Clang-tidy           : ${LOGGING_ENABLE_CLANGTIDY}")
+  message("  Fix                  : ${LOGGING_ENABLE_FIX}")
+  message("  Iwyu                 : ${LOGGING_ENABLE_IWYU}")
+  message("  Sanitizer            : ${LOGGING_ENABLE_SANITIZER}")
+  message("  Sanitizer type       : ${LOGGING_SANITIZER_TYPE}")
+  message("  Spell                : ${LOGGING_ENABLE_SPELL}")
+  message("  Valgrind             : ${LOGGING_ENABLE_VALGRIND}")
+  message("")
+  message("Build:")
+  message("  Default C++ standard : ${CMAKE_CXX_STANDARD}")
+  message("  C flags              : ${CMAKE_C_FLAGS}")
+  message("  CXX flags            : ${CMAKE_CXX_FLAGS}")
+  message("  Shared linker flags  : ${CMAKE_SHARED_LINKER_FLAGS}")
+  message("  Static linker flags  : ${CMAKE_STATIC_LINKER_FLAGS}")
+  message("  Module linker flags  : ${CMAKE_MODULE_LINKER_FLAGS}")
+  get_directory_property(_summary_compile_defs DIRECTORY ${PROJECT_SOURCE_DIR} COMPILE_DEFINITIONS)
+  message("  Top-level compile defs : ${_summary_compile_defs}")
+  message("")
+endif()
