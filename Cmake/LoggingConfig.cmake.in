@@ -1,14 +1,46 @@
 @PACKAGE_INIT@
 
+include("${CMAKE_CURRENT_LIST_DIR}/LoggingTargets.cmake")
+
 # Backend dependencies (fmt, loguru, glog, spdlog) are linked PRIVATE by the
 # Logging target and never appear in LoggingTargets.cmake's
 # INTERFACE_LINK_LIBRARIES -- they're an implementation detail baked into
 # libLogging at build time, not part of a consumer's link graph. magic_enum
 # is header-only and used from a public header, but its headers are copied
 # directly into this package's own include/ tree rather than exported as a
-# separate dependency. Either way, no find_dependency() calls are needed
-# here.
-
-include("${CMAKE_CURRENT_LIST_DIR}/LoggingTargets.cmake")
+# separate dependency. No find_dependency() calls are needed for any of
+# that.
+#
+# loguru is the one exception: PRIVATE linking only bakes its object code
+# into libLogging when Logging builds SHARED. For a STATIC Logging (verified
+# empirically against the generated LoggingTargets.cmake: the PRIVATE
+# dependency really does come out empty, not merely hidden behind
+# $<LINK_ONLY:>), an external consumer linking the installed static
+# Logging::Logging still needs loguru's symbols on the link line. There is
+# no LoguruConfig.cmake to find_dependency() against, so this package
+# re-installs/re-exposes the loguru archive itself (CMakeLists.txt, guarded
+# the same way as LOGGING_CONFIG_STATIC_LOGURU below) and reconstructs the
+# import here -- a deliberate, necessary fallback, not something
+# install(EXPORT) could have generated. Doing it once, here, means every
+# project vendoring Logging gets it for free instead of re-implementing this
+# fallback itself.
+if(@LOGGING_CONFIG_STATIC_LOGURU@ AND NOT TARGET Loguru::loguru)
+  find_library(_logging_loguru_path NAMES loguru logurud
+    PATHS "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@" NO_DEFAULT_PATH)
+  if(_logging_loguru_path)
+    include(CMakeFindDependencyMacro)
+    find_dependency(Threads)
+    add_library(Loguru::loguru UNKNOWN IMPORTED)
+    set_target_properties(Loguru::loguru PROPERTIES
+      IMPORTED_LOCATION "${_logging_loguru_path}"
+      INTERFACE_INCLUDE_DIRECTORIES "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_INCLUDEDIR@/loguru"
+      INTERFACE_LINK_LIBRARIES "Threads::Threads"
+    )
+    if(TARGET Logging::Logging)
+      set_property(TARGET Logging::Logging APPEND PROPERTY INTERFACE_LINK_LIBRARIES Loguru::loguru)
+    endif()
+  endif()
+  unset(_logging_loguru_path)
+endif()
 
 check_required_components(Logging)
