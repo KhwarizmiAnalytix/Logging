@@ -321,6 +321,15 @@ set(LOGURU_BUILD_EXAMPLES OFF CACHE BOOL "Disable loguru examples" FORCE)
 set(LOGURU_BUILD_TESTS OFF CACHE BOOL "Disable loguru tests" FORCE)
 # set(LOGURU_USE_FMTLIB ON CACHE BOOL "Enable fmtlib formatting in loguru" FORCE)
 set(LOGURU_WITH_STREAMS ON CACHE BOOL "Enable streams in loguru" FORCE)
+# loguru.cpp enables stack traces (and the dladdr() call they require) by its
+# own preprocessor default on Linux/macOS regardless of this CMake variable,
+# but loguru's CMakeLists.txt only adds the matching -l${CMAKE_DL_LIBS} link
+# flag when LOGURU_STACKTRACES is truthy here. Left unset, the two defaults
+# disagree: loguru.cpp calls dladdr() but nothing links libdl. Glibc merged
+# dladdr() into libc around 2.34, which hid the mismatch on newer distros;
+# the pinned gcc 9.1 / clang 9.0 CI containers use an older glibc that still
+# needs the explicit link, so set this to keep both defaults consistent.
+set(LOGURU_STACKTRACES ON CACHE BOOL "Enable loguru stack traces" FORCE)
 
 # glog-specific options
 set(BUILD_EXAMPLES OFF CACHE BOOL "Disable glog examples" FORCE)
