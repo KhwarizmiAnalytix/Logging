@@ -9,6 +9,143 @@
 # detection with cached results - Efficient compiler capability validation - Streamlined dependency
 # checking
 
+# Validate compiler minimums on every configure, including when feature checks are cached.
+# The floor scales with the selected C++ standard: each later standard needs a strictly
+# newer compiler to even recognize the -std=/-std:c++NN flag, let alone support the
+# language — a compiler that only clears an older floor fails later with a raw
+# "unrecognized command line option" instead of this clear FATAL_ERROR. This replaces the
+# project's former pair of conflicting, partially-cache-skipped checks (this file's old
+# flat "C++17" floors below, and compiler_checks.cmake's separate "modern" floors) with
+# one unconditional, standard-aware table.
+if(DEFINED LOGGING_CXX_STANDARD AND NOT LOGGING_CXX_STANDARD STREQUAL "")
+  set(_logging_checks_min_standard "${LOGGING_CXX_STANDARD}")
+elseif(DEFINED CMAKE_CXX_STANDARD AND NOT CMAKE_CXX_STANDARD STREQUAL "")
+  set(_logging_checks_min_standard "${CMAKE_CXX_STANDARD}")
+else()
+  set(_logging_checks_min_standard 17)
+endif()
+
+if(_logging_checks_min_standard STREQUAL "23")
+  # -std=c++23 (previously -std=c++2b).
+  # https://gcc.gnu.org/gcc-11/changes.html
+  set(_logging_checks_min_gcc 11.0)
+  # https://releases.llvm.org/17.0.0/tools/clang/docs/ReleaseNotes.html
+  set(_logging_checks_min_clang 17.0)
+  # Apple has not published an explicit minimum for -std=c++23; best available estimate
+  # — verify against CI before relying on it.
+  set(_logging_checks_min_appleclang 15.0)
+  # /std:c++23preview from VS 17.0 (19.30); stable /std:c++23 only in very recent toolsets.
+  # https://learn.microsoft.com/en-us/cpp/build/reference/std-specify-language-standard-version
+  set(_logging_checks_min_msvc 19.34)
+elseif(_logging_checks_min_standard STREQUAL "20")
+  # -std=c++20 (previously only -std=c++2a).
+  # https://gcc.gnu.org/gcc-10/changes.html
+  set(_logging_checks_min_gcc 10.0)
+  # https://releases.llvm.org/11.0.0/tools/clang/docs/ReleaseNotes.html
+  set(_logging_checks_min_clang 11.0)
+  # Xcode 12 (AppleClang 12) still rejects -std=c++20 ("use c++2a"); Xcode 14
+  # (AppleClang 14) accepts it — 13 is a conservative floor pending CI confirmation.
+  set(_logging_checks_min_appleclang 13.0)
+  # https://devblogs.microsoft.com/cppblog/msvc-cpp20-and-the-std-cpp20-switch/
+  set(_logging_checks_min_msvc 19.29)
+elseif(_logging_checks_min_standard STREQUAL "14")
+  # -std=c++14.
+  # https://gcc.gnu.org/gcc-5/changes.html
+  set(_logging_checks_min_gcc 5.0)
+  # https://clang.llvm.org/cxx_status.html#cxx14
+  set(_logging_checks_min_clang 3.4)
+  # Xcode 6.1 / AppleClang 6.0 completes C++14 support.
+  set(_logging_checks_min_appleclang 6.0)
+  # VS 2015 (MSVC 19.0) is the first toolset advertising full C++14 support.
+  # https://devblogs.microsoft.com/cppblog/c111417-features-in-vs-2015-rtm/
+  set(_logging_checks_min_msvc 19.0)
+elseif(_logging_checks_min_standard STREQUAL "11")
+  # -std=c++11.
+  # https://gcc.gnu.org/projects/cxx-status.html#cxx11
+  set(_logging_checks_min_gcc 4.8)
+  # https://clang.llvm.org/cxx_status.html#cxx11
+  set(_logging_checks_min_clang 3.3)
+  # Xcode 5.0 / AppleClang 5.0 is the first Clang-based Xcode toolchain with full
+  # -std=c++11 support.
+  set(_logging_checks_min_appleclang 5.0)
+  # VS 2013's C++11 support is partial; require VS 2015 (MSVC 19.0) for a complete
+  # implementation instead.
+  set(_logging_checks_min_msvc 19.0)
+else()
+  # C++17 baseline.
+  # https://gcc.gnu.org/gcc-7/changes.html
+  set(_logging_checks_min_gcc 7.1)
+  # https://clang.llvm.org/cxx_status.html#cxx17
+  set(_logging_checks_min_clang 5.0)
+  # AppleClang 10 / Xcode 10 adds the C++17 <optional>, <any>, and <variant> headers.
+  # https://developer.apple.com/documentation/xcode-release-notes/xcode-10-release-notes/
+  set(_logging_checks_min_appleclang 10.0)
+  # MSVC 19.14 / VS 2017 15.7 also supports /Zc:__cplusplus, used by platform.cmake.
+  # https://learn.microsoft.com/en-us/cpp/overview/what-s-new-for-cpp-2017
+  set(_logging_checks_min_msvc 19.14)
+endif()
+# Intel's version scheme doesn't track upstream C++-standard release cadence the way
+# GCC/Clang/MSVC do, so (unlike the floors above) this floor is fixed across all standards:
+# the stricter of this project's two former, conflicting Intel requirements.
+set(_logging_checks_min_intel 19.0)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+   AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS _logging_checks_min_gcc
+)
+  message(
+    FATAL_ERROR
+      "GCC ${_logging_checks_min_gcc} or later is required for C++${_logging_checks_min_standard}. "
+      "Found: ${CMAKE_CXX_COMPILER_VERSION}"
+  )
+endif()
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+   AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS _logging_checks_min_clang
+)
+  message(
+    FATAL_ERROR
+      "LLVM Clang ${_logging_checks_min_clang} or later is required for C++${_logging_checks_min_standard}. "
+      "Found: ${CMAKE_CXX_COMPILER_VERSION}"
+  )
+endif()
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
+   AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS _logging_checks_min_appleclang
+)
+  message(
+    FATAL_ERROR
+      "Apple Clang ${_logging_checks_min_appleclang} or later is required for C++${_logging_checks_min_standard}. "
+      "Found: ${CMAKE_CXX_COMPILER_VERSION}"
+  )
+endif()
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"
+   AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS _logging_checks_min_msvc
+)
+  message(
+    FATAL_ERROR
+      "MSVC ${_logging_checks_min_msvc} or later is required for C++${_logging_checks_min_standard}. "
+      "Found: ${CMAKE_CXX_COMPILER_VERSION}"
+  )
+endif()
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Intel"
+   AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS _logging_checks_min_intel
+)
+  message(
+    FATAL_ERROR
+      "Intel C++ ${_logging_checks_min_intel} or later is required. "
+      "Found: ${CMAKE_CXX_COMPILER_VERSION}"
+  )
+endif()
+
+unset(_logging_checks_min_gcc)
+unset(_logging_checks_min_clang)
+unset(_logging_checks_min_appleclang)
+unset(_logging_checks_min_msvc)
+unset(_logging_checks_min_intel)
+# _logging_checks_min_standard stays set: the C++17 feature probe below reuses it.
+
 # Guard against multiple inclusions for performance
 if(TEMP_CHECKS_CONFIGURED)
   return()
@@ -53,75 +190,38 @@ if(NOT DEFINED TEMP_PLATFORM_DETECTED)
 endif()
 
 # =============================================================================
-# Compiler Version
-# Validation (Updated for Modern Requirements)
-
-# Updated minimum compiler versions for C++17 support and modern optimizations
-set(TEMP_MIN_GCC_VERSION "7.0")
-set(TEMP_MIN_CLANG_VERSION "5.0")
-set(TEMP_MIN_APPLE_CLANG_VERSION "9.0")
-set(TEMP_MIN_MSVC_VERSION "19.14") # VS 2017 15.7
-set(TEMP_MIN_INTEL_VERSION "18.0")
+# Compiler Detection
+# Version minimums are enforced above.
 
 set(TEMP_COMPILER_ID ${CMAKE_CXX_COMPILER_ID} CACHE INTERNAL "Compiler ID")
 mark_as_advanced(TEMP_COMPILER_ID)
 
-# GCC version check
+# GCC
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${TEMP_MIN_GCC_VERSION})
-    message(
-      FATAL_ERROR
-        "XSigma requires GCC ${TEMP_MIN_GCC_VERSION} or later for C++17 support and modern optimizations. Found: ${CMAKE_CXX_COMPILER_VERSION}"
-    )
-  endif()
   set(TEMP_COMPILER_GCC TRUE CACHE INTERNAL "GCC compiler detected")
   message(STATUS "XSigma: GCC ${CMAKE_CXX_COMPILER_VERSION} validated")
   set(TEMP_COMPILER_ID "gcc" CACHE INTERNAL "Compiler ID")
 
-  # Clang version check
+  # Clang
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${TEMP_MIN_CLANG_VERSION})
-    message(
-      FATAL_ERROR
-        "XSigma requires Clang ${TEMP_MIN_CLANG_VERSION} or later for C++17 support and modern optimizations. Found: ${CMAKE_CXX_COMPILER_VERSION}"
-    )
-  endif()
   set(TEMP_COMPILER_CLANG TRUE CACHE INTERNAL "Clang compiler detected")
   message(STATUS "XSigma: Clang ${CMAKE_CXX_COMPILER_VERSION} validated")
   set(TEMP_COMPILER_ID "clang" CACHE INTERNAL "Compiler ID")
 
-  # Apple Clang version check
+  # Apple Clang
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${TEMP_MIN_APPLE_CLANG_VERSION})
-    message(
-      FATAL_ERROR
-        "XSigma requires Apple Clang ${TEMP_MIN_APPLE_CLANG_VERSION} or later for C++17 support and modern optimizations. Found: ${CMAKE_CXX_COMPILER_VERSION}"
-    )
-  endif()
   set(TEMP_COMPILER_APPLE_CLANG TRUE CACHE INTERNAL "Apple Clang compiler detected")
   message(STATUS "XSigma: Apple Clang ${CMAKE_CXX_COMPILER_VERSION} validated")
   set(TEMP_COMPILER_ID "clang" CACHE INTERNAL "Compiler ID")
 
-  # MSVC version check
+  # MSVC
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${TEMP_MIN_MSVC_VERSION})
-    message(
-      FATAL_ERROR
-        "XSigma requires MSVC ${TEMP_MIN_MSVC_VERSION} or later (Visual Studio 2017 15.7+) for C++17 support and modern optimizations. Found: ${CMAKE_CXX_COMPILER_VERSION}"
-    )
-  endif()
   set(TEMP_COMPILER_MSVC TRUE CACHE INTERNAL "MSVC compiler detected")
   message(STATUS "XSigma: MSVC ${CMAKE_CXX_COMPILER_VERSION} validated")
   set(TEMP_COMPILER_ID "msvc" CACHE INTERNAL "Compiler ID")
 
-  # Intel C++ version check
+  # Intel C++
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${TEMP_MIN_INTEL_VERSION})
-    message(
-      FATAL_ERROR
-        "XSigma requires Intel C++ ${TEMP_MIN_INTEL_VERSION} or later for C++17 support and modern optimizations. Found: ${CMAKE_CXX_COMPILER_VERSION}"
-    )
-  endif()
   set(TEMP_COMPILER_INTEL TRUE CACHE INTERNAL "Intel compiler detected")
   message(STATUS "XSigma: Intel C++ ${CMAKE_CXX_COMPILER_VERSION} validated")
   set(TEMP_COMPILER_ID "intel" CACHE INTERNAL "Compiler ID")
@@ -168,60 +268,81 @@ endif()
 
 include(CheckCXXSourceCompiles)
 
-# C++17 features validation (cached)
-if(MSVC)
-  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} /Zc:__cplusplus /std:c++17")
-endif()
-if(NOT DEFINED TEMP_CXX17_FEATURES_VALIDATED)
-  # Test structured bindings
-  check_cxx_source_compiles(
-    "
-        #include <tuple>
-        int main() {
-            auto [a, b] = std::make_tuple(1, 2);
-            return a + b - 3;
-        }
-    "
-    TEMP_HAS_STRUCTURED_BINDINGS
-  )
+# C++17 features validation (cached), probed against the project's selected standard —
+# LOGGING_CXX_STANDARD also allows 11/14, where these features simply aren't required, so
+# skip the probe entirely below C++17 rather than warning about features nothing asked for.
+# check_cxx_source_compiles does not inherit CMAKE_CXX_STANDARD, so inject it explicitly —
+# Clang's default language mode accepts structured bindings and if constexpr as extensions,
+# but the MSVC STL hides std::optional until the TU is actually compiled as C++17.
+if(_logging_checks_min_standard STREQUAL "17"
+   OR _logging_checks_min_standard STREQUAL "20"
+   OR _logging_checks_min_standard STREQUAL "23"
+)
+  if(NOT DEFINED TEMP_CXX17_FEATURES_VALIDATED)
+    set(_logging_checks_saved_required_flags "${CMAKE_REQUIRED_FLAGS}")
+    if(MSVC AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+                     AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU"))
+      string(APPEND CMAKE_REQUIRED_FLAGS
+             " /Zc:__cplusplus /std:c++${_logging_checks_min_standard}")
+    else()
+      string(APPEND CMAKE_REQUIRED_FLAGS " -std=c++${_logging_checks_min_standard}")
+    endif()
 
-  # Test if constexpr
-  check_cxx_source_compiles(
-    "
-        constexpr int test_func(int x) {
-            if constexpr (true) {
-                return x * 2;
-            } else {
-                return x;
-            }
-        }
-        int main() {
-            constexpr int result = test_func(5);
-            return result - 10;
-        }
-    "
-    TEMP_HAS_IF_CONSTEXPR
-  )
+    # Test structured bindings
+    check_cxx_source_compiles(
+      "
+          #include <tuple>
+          int main() {
+              auto [a, b] = std::make_tuple(1, 2);
+              return a + b - 3;
+          }
+      "
+      TEMP_HAS_STRUCTURED_BINDINGS
+    )
 
-  # Test std::optional
-  check_cxx_source_compiles(
-    "
-        #include <optional>
-        int main() {
-            std::optional<int> opt = 42;
-            return opt.value_or(0) - 42;
-        }
-    "
-    TEMP_HAS_STD_OPTIONAL
-  )
+    # Test if constexpr
+    check_cxx_source_compiles(
+      "
+          constexpr int test_func(int x) {
+              if constexpr (true) {
+                  return x * 2;
+              } else {
+                  return x;
+              }
+          }
+          int main() {
+              constexpr int result = test_func(5);
+              return result - 10;
+          }
+      "
+      TEMP_HAS_IF_CONSTEXPR
+    )
 
-  if(NOT TEMP_HAS_STRUCTURED_BINDINGS OR NOT TEMP_HAS_IF_CONSTEXPR OR NOT TEMP_HAS_STD_OPTIONAL)
-    message(WARNING "XSigma: Compiler does not support required C++17 features")
+    # Test std::optional
+    check_cxx_source_compiles(
+      "
+          #include <optional>
+          int main() {
+              std::optional<int> opt = 42;
+              return opt.value_or(0) - 42;
+          }
+      "
+      TEMP_HAS_STD_OPTIONAL
+    )
+
+    set(CMAKE_REQUIRED_FLAGS "${_logging_checks_saved_required_flags}")
+    unset(_logging_checks_saved_required_flags)
+
+    if(NOT TEMP_HAS_STRUCTURED_BINDINGS OR NOT TEMP_HAS_IF_CONSTEXPR OR NOT TEMP_HAS_STD_OPTIONAL)
+      message(WARNING "XSigma: Compiler does not support required C++17 features")
+    endif()
+
+    set(TEMP_CXX17_FEATURES_VALIDATED TRUE CACHE INTERNAL "C++17 features validation completed")
+    message(STATUS "XSigma: C++17 features validated")
   endif()
-
-  set(TEMP_CXX17_FEATURES_VALIDATED TRUE CACHE INTERNAL "C++17 features validation completed")
-  message(STATUS "XSigma: C++17 features validated")
 endif()
+
+unset(_logging_checks_min_standard)
 
 # Exception handling validation (cached)
 if(NOT DEFINED TEMP_EXCEPTION_HANDLING_VALIDATED)
@@ -290,7 +411,7 @@ set(TEMP_VALIDATION_COMPLETED "${TEMP_VALIDATION_CACHE_KEY}"
 
 # Store validation summary
 set(TEMP_VALIDATION_SUMMARY
-    "Platform: ${TEMP_PLATFORM}, Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, C++: ${TEMP_CXX_STANDARD}"
+    "Platform: ${TEMP_PLATFORM}, Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, C++: ${LOGGING_CXX_STANDARD}"
     CACHE INTERNAL "Validation summary"
 )
 

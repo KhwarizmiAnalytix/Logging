@@ -155,7 +155,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "PGI")
   string(APPEND CMAKE_CXX_FLAGS " --diag_suppress=381")
 endif()
 
-if(MSVC)
+if(MSVC AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+                 AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU"))
   message(STATUS "MSVC compiler detected: applying MSVC-specific flags")
   # Use the highest warning level for visual c++ compiler. set(CMAKE_CXX_WARNING_LEVEL 4)
   # if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]") string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_CXX_FLAGS
@@ -171,10 +172,6 @@ if(MSVC)
   )
   string(APPEND CMAKE_CXX_FLAGS " /wd4244 /wd4267 /wd4715 /wd4018")
   string(APPEND CMAKE_C_FLAGS " /wd4244 /wd4267 /wd4715 /wd4018")
-
-  # Disable deprecation warnings for standard C and STL functions in VS2015+ and later
-  add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS)
-  add_definitions(-D_SCL_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_WARNINGS)
 
   # Enable /MP flag for Visual Studio
   set(CMAKE_CXX_MP_FLAG ON CACHE BOOL "Build with /MP flag enabled")
@@ -211,6 +208,14 @@ if(MSVC)
   message(STATUS "  MSVC: enabling structured exception handling (/EHsc)")
   string(APPEND CMAKE_CXX_FLAGS " /EHsc")
   string(APPEND CMAKE_C_FLAGS " /EHsc")
+endif()
+
+# Suppress MSVC CRT deprecation warnings for all compilers that target the Windows CRT
+# (cl.exe, clang-cl, clang++ with MSVC CRT). MinGW ships its own CRT that does not use
+# these macros, so it is excluded.
+if(WIN32 AND NOT MINGW)
+  add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS)
+  add_definitions(-D_SCL_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_WARNINGS)
 endif()
 
 if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
