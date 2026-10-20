@@ -1,6 +1,6 @@
-"Module extension for vendored deps without MODULE.bazel (fmt, loguru, spdlog)."
+"Module extension for vendored deps without MODULE.bazel (fmt, loguru, spdlog, googletest, benchmark)."
 
-load("@bazel_tools//tools/build_defs/repo:local.bzl", "new_local_repository")
+load("@bazel_tools//tools/build_defs/repo:local.bzl", "local_repository", "new_local_repository")
 
 def _vendor_deps_impl(mctx):
     # Derive the module root (ThirdParty/Logging/) from a known exported file.
@@ -23,6 +23,16 @@ def _vendor_deps_impl(mctx):
         name = "spdlog",
         path = str(module_root) + "/ThirdParty/spdlog",
         build_file_content = mctx.read(spdlog_build),
+    )
+
+    # googletest and benchmark ship their own BUILD.bazel.
+    local_repository(
+        name = "com_google_googletest",
+        path = str(module_root) + "/ThirdParty/googletest",
+    )
+    local_repository(
+        name = "com_google_benchmark",
+        path = str(module_root) + "/ThirdParty/benchmark",
     )
 
 vendor_deps = module_extension(

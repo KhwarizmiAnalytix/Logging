@@ -13,6 +13,8 @@ bazel_dep(name = "magic_enum", version = "0.9.8")
 bazel_dep(name = "glog", version = "0.7.1")
 bazel_dep(name = "gflags", version = "2.2.2")
 
-# fmt, loguru, spdlog are vendored without MODULE.bazel — created via extension.
+# fmt, loguru, spdlog, googletest, and benchmark are vendored without their own
+# MODULE.bazel (or consumed pinned to the ThirdParty/ submodule commit rather
+# than a registry release) — created via extension.
 vendor = use_extension("//bazel:vendor_deps.bzl", "vendor_deps")
-use_repo(vendor, "fmt", "loguru", "spdlog")
+use_repo(vendor, "fmt", "loguru", "spdlog", "com_google_googletest", "com_google_benchmark")

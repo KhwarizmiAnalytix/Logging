@@ -1,9 +1,11 @@
-# Keep WORKSPACE mode working alongside Bzlmod (same approach as XSigma).
-# Requires Bazel 7/8 — WORKSPACE-based repos (local_repository / new_local_repository
-# in WORKSPACE.bazel, wiring every ThirdParty/ submodule) are unsupported starting
-# with Bazel 9. See .bazelversion; bump only after migrating WORKSPACE.bazel to
-# bzlmod (MODULE.bazel) equivalents (e.g. local_path_override / a repo rule).
-build --enable_workspace
+# All ThirdParty/ submodules (fmt, loguru, spdlog, glog, magic_enum,
+# googletest, benchmark) are wired through Bzlmod (MODULE.bazel + the
+# //bazel:vendor_deps.bzl extension), not WORKSPACE. Do NOT set
+# --enable_workspace: combined with bzlmod's rules_cc toolchain autoconfig on
+# Bazel 8, it makes Bazel report a bogus repo cycle at
+# '@@cc_compatibility_proxy//:symbols.bzl' ("repository used prior to being
+# defined") even with an empty WORKSPACE file. WORKSPACE mode is unsupported
+# starting with Bazel 9 regardless, so there is nothing to keep this for.
 
 # Auto-select the build:<os>/test:<os> blocks below for the host platform
 # (linux/macos/windows), so cross-platform flags don't need --config.
