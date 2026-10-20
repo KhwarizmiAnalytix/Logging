@@ -355,4 +355,3 @@ Each phase is independently committable and testable:
 - External review: (pasted at start of refactoring session)
 - Old Phase 1 baseline: `docs/PHASE1_BASELINE_REPORT.md` (superseded)
 - Old Phase 2 plan: `docs/PHASE2_IMPLEMENTATION_PLAN.md` (superseded)
-- Plan details: `/Users/toufikbellaj/.claude/plans/lexical-crunching-lantern.md`

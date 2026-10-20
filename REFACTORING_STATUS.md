@@ -243,7 +243,7 @@ logging::vlog(level::info,
 To resume work on Phases D-E:
 
 ```bash
-cd /Users/toufikbellaj/dev/Logging
+cd Logging
 
 # Run current build
 Scripts/setup.py config.build.test --backend.native
