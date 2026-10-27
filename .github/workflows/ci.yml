@@ -126,9 +126,8 @@ jobs:
   # ---------------------------------------------------------------------------
   # Compiler cache & Icecc: exercise LOGGING_ENABLE_CACHE/LOGGING_CACHE_BACKEND
   # (ccache, sccache) and LOGGING_ENABLE_ICECC across Linux/macOS/Windows.
-  # Icecc has no Windows port, so it's Linux/macOS only. buildcache is a valid
-  # LOGGING_CACHE_BACKEND value too but isn't exercised here (needs a pinned
-  # installer, out of scope for this lightweight matrix).
+  # BuildCache runs in buildcache.yml. Icecc has no Windows port, so it is
+  # exercised on Linux/macOS only.
   # ---------------------------------------------------------------------------
   cache-icecc:
     name: Cache & Icecc / ${{ matrix.name }}
