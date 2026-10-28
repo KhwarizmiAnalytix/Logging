@@ -20,7 +20,6 @@
  * Website: https://www.xsigma.co.uk
  */
 
-
 #ifndef LOGGING_PORTABLE_MACROS_INCLUDED_
 #define LOGGING_PORTABLE_MACROS_INCLUDED_
 
@@ -31,7 +30,7 @@
 #error LOGGING requires MSVC++ 15.0 (Visual Studio 2017) or newer for C++17 support
 #endif
 
-#if !defined(__clang__) && defined(__GNUC__) && \
+#if !defined(__clang__) && defined(__GNUC__) &&                                                    \
     (__GNUC__ < 7 || (__GNUC__ == 7 && __GNUC_MINOR__ < 1))
 #error LOGGING requires GCC 7.1 or newer for C++17 support
 #endif
@@ -97,10 +96,6 @@
 #define LOGGING_FORMAT_USE_STD 0
 #endif
 
-#ifndef LOGGING_HAS_MAGICENUM
-#define LOGGING_HAS_MAGICENUM 0
-#endif
-
 #ifndef LOGGING_PORTABLE_FLOAT_FORMAT
 #define LOGGING_PORTABLE_FLOAT_FORMAT 0
 #endif
@@ -131,13 +126,13 @@
 // ============================================================================
 // Non-copyable / non-movable types (logger/logger.h)
 // ============================================================================
-#define LOGGING_DELETE_COPY_AND_MOVE(type)   \
-private:                                     \
-    type(const type&)              = delete; \
-    type& operator=(const type& a) = delete; \
-    type(type&&)                   = delete; \
-    type& operator=(type&&)        = delete; \
-                                             \
+#define LOGGING_DELETE_COPY_AND_MOVE(type)                                                         \
+private:                                                                                           \
+    type(const type&)              = delete;                                                       \
+    type& operator=(const type& a) = delete;                                                       \
+    type(type&&)                   = delete;                                                       \
+    type& operator=(type&&)        = delete;                                                       \
+                                                                                                   \
 public:
 
 #endif  // LOGGING_PORTABLE_MACROS_INCLUDED_

@@ -1,9 +1,9 @@
 # =============================================================================
-# XSigma
-# Include-What-You-Use (IWYU) Configuration Module
+# XSigma Include-What-You-Use (IWYU) Configuration Module
 
-# This module configures include-what-you-use for analyzing include dependencies. It detects
-# unnecessary includes and suggests improvements to include structure.
+# This module configures include-what-you-use for analyzing include
+# dependencies. It detects unnecessary includes and suggests improvements to
+# include structure.
 
 # Include guard to prevent multiple inclusions
 include_guard(GLOBAL)
@@ -47,7 +47,8 @@ else()
   get_filename_component(_iwyu_bin_dir "${IWYU_EXECUTABLE}" DIRECTORY)
   get_filename_component(_iwyu_prefix "${_iwyu_bin_dir}" DIRECTORY)
   set(_iwyu_share "${_iwyu_prefix}/share/include-what-you-use")
-  # Also try the libexec layout used by Homebrew (bin is a symlink into libexec/bin)
+  # Also try the libexec layout used by Homebrew (bin is a symlink into
+  # libexec/bin)
   if(NOT EXISTS "${_iwyu_share}")
     get_filename_component(_iwyu_real_exec "${IWYU_EXECUTABLE}" REALPATH)
     get_filename_component(_iwyu_real_bin "${_iwyu_real_exec}" DIRECTORY)
@@ -55,9 +56,10 @@ else()
     set(_iwyu_share "${_iwyu_real_prefix}/share/include-what-you-use")
   endif()
 
-  # Load libcxx.imp for libc++ internal __<module>/ header redirects. stl.c.headers.imp is
-  # intentionally excluded: it marks C headers (e.g. <stdint.h>) as "public", which conflicts with
-  # our "private" mappings that redirect them to <cstdint> etc.
+  # Load libcxx.imp for libc++ internal __<module>/ header redirects.
+  # stl.c.headers.imp is intentionally excluded: it marks C headers (e.g.
+  # <stdint.h>) as "public", which conflicts with our "private" mappings that
+  # redirect them to <cstdint> etc.
   set(IWYU_BUILTIN_MAPPING_FILES "")
   foreach(_builtin_map IN ITEMS libcxx.imp)
     if(EXISTS "${_iwyu_share}/${_builtin_map}")
@@ -70,9 +72,11 @@ else()
   set(IWYU_LOG_DIR "${CMAKE_BINARY_DIR}/iwyu_logs")
   file(MAKE_DIRECTORY "${IWYU_LOG_DIR}")
 
-  # Set IWYU log file path — CACHE INTERNAL so it survives include_guard(GLOBAL) across all modules
-  # that call xsigma_apply_iwyu from their own scope.
-  set(IWYU_LOG_FILE "${CMAKE_BINARY_DIR}/iwyu.log" CACHE INTERNAL "IWYU log file path")
+  # Set IWYU log file path — CACHE INTERNAL so it survives include_guard(GLOBAL)
+  # across all modules that call xsigma_apply_iwyu from their own scope.
+  set(IWYU_LOG_FILE "${CMAKE_BINARY_DIR}/iwyu.log" CACHE INTERNAL
+                                                         "IWYU log file path"
+  )
 
   # Prepare IWYU arguments with crash-resistant settings
   set(PROJECT_IWYU_ARGS
@@ -97,8 +101,8 @@ else()
   # Add system root for macOS to help IWYU find system headers
   if(APPLE)
     execute_process(
-      COMMAND xcrun --show-sdk-path OUTPUT_VARIABLE MACOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
-                                                                   ERROR_QUIET
+      COMMAND xcrun --show-sdk-path OUTPUT_VARIABLE MACOS_SDK_PATH
+      OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
     )
     if(MACOS_SDK_PATH)
       list(APPEND PROJECT_IWYU_ARGS "-isysroot" "${MACOS_SDK_PATH}")
@@ -107,7 +111,9 @@ else()
   endif()
 
   if(IWYU_MAPPING_FILE)
-    list(PREPEND PROJECT_IWYU_ARGS "-Xiwyu" "--mapping_file=${IWYU_MAPPING_FILE}")
+    list(PREPEND PROJECT_IWYU_ARGS "-Xiwyu"
+         "--mapping_file=${IWYU_MAPPING_FILE}"
+    )
   endif()
 
   # Prepend built-in mapping files so the custom file's rules take precedence
@@ -116,9 +122,13 @@ else()
   endforeach()
 
   # Create configure detector script path
-  set(CONFIGURE_DETECTOR_SCRIPT "${PROJECT_SOURCE_DIR}/Scripts/iwyu/iwyu_configure_detector.py")
+  set(CONFIGURE_DETECTOR_SCRIPT
+      "${PROJECT_SOURCE_DIR}/Scripts/iwyu/iwyu_configure_detector.py"
+  )
 
-  message(STATUS "IWYU will analyze include dependencies for XSigma targets only")
+  message(
+    STATUS "IWYU will analyze include dependencies for XSigma targets only"
+  )
   message(STATUS "IWYU analysis will be logged to: ${IWYU_LOG_FILE}")
 
   # Run configure header detection analysis
@@ -127,8 +137,9 @@ else()
     execute_process(
       COMMAND
         ${CMAKE_COMMAND} -E env python "${CONFIGURE_DETECTOR_SCRIPT}"
-        "${PROJECT_SOURCE_DIR}/Library" --log-file "${PROJECT_BINARY_DIR}/configure_detection.log"
-        --report-file "${PROJECT_BINARY_DIR}/configure_analysis_report.txt" --recursive
+        "${PROJECT_SOURCE_DIR}/Library" --log-file
+        "${PROJECT_BINARY_DIR}/configure_detection.log" --report-file
+        "${PROJECT_BINARY_DIR}/configure_analysis_report.txt" --recursive
       WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
       RESULT_VARIABLE CONFIGURE_DETECTION_RESULT
       OUTPUT_VARIABLE CONFIGURE_DETECTION_OUTPUT
@@ -138,30 +149,41 @@ else()
     if(CONFIGURE_DETECTION_RESULT EQUAL 0)
       message(STATUS "Configure header detection completed successfully")
     else()
-      message(
-        WARNING
-          "Configure header detection found issues - check ${PROJECT_BINARY_DIR}/configure_analysis_report.txt"
+      message(WARNING "Configure header detection found issues - check "
+                      "${PROJECT_BINARY_DIR}/configure_analysis_report.txt"
       )
     endif()
 
-    message(STATUS "Configure analysis report: ${PROJECT_BINARY_DIR}/configure_analysis_report.txt")
+    message(STATUS "Configure analysis report: "
+                   "${PROJECT_BINARY_DIR}/configure_analysis_report.txt"
+    )
   else()
-    message(WARNING "Configure detector script not found: ${CONFIGURE_DETECTOR_SCRIPT}")
+    message(
+      WARNING
+        "Configure detector script not found: ${CONFIGURE_DETECTOR_SCRIPT}"
+    )
   endif()
 endif()
 
-# Function to create IWYU wrapper script for enhanced logging. Optional ARGN items are extra flags
-# appended to IWYU args (e.g. per-language -D defines).
+# Function to create IWYU wrapper script for enhanced logging. Optional ARGN
+# items are extra flags appended to IWYU args (e.g. per-language -D defines).
 function(xsigma_create_iwyu_wrapper target_name lang)
-  set(WRAPPER_SCRIPT "${PROJECT_BINARY_DIR}/iwyu_wrapper_${target_name}_${lang}.cmake")
+  set(WRAPPER_SCRIPT
+      "${PROJECT_BINARY_DIR}/iwyu_wrapper_${target_name}_${lang}.cmake"
+  )
 
-  # Build per-item list(APPEND) calls to safely embed all IWYU args in the generated script
+  # Build per-item list(APPEND) calls to safely embed all IWYU args in the
+  # generated script
   set(IWYU_ARGS_INIT_CODE "set(IWYU_EXTRA_ARGS)\n")
   foreach(arg IN LISTS PROJECT_IWYU_ARGS)
-    string(APPEND IWYU_ARGS_INIT_CODE "list(APPEND IWYU_EXTRA_ARGS \"${arg}\")\n")
+    string(APPEND IWYU_ARGS_INIT_CODE
+           "list(APPEND IWYU_EXTRA_ARGS \"${arg}\")\n"
+    )
   endforeach()
   foreach(arg IN LISTS ARGN)
-    string(APPEND IWYU_ARGS_INIT_CODE "list(APPEND IWYU_EXTRA_ARGS \"${arg}\")\n")
+    string(APPEND IWYU_ARGS_INIT_CODE
+           "list(APPEND IWYU_EXTRA_ARGS \"${arg}\")\n"
+    )
   endforeach()
 
   # Create wrapper script that logs IWYU output
@@ -212,7 +234,8 @@ function(xsigma_apply_iwyu target_name)
 
   # Skip third-party targets
   get_target_property(target_source_dir ${target_name} SOURCE_DIR)
-  if(target_source_dir MATCHES ".*/ThirdParty/.*" OR target_source_dir MATCHES ".*/third_party/.*"
+  if(target_source_dir MATCHES ".*/ThirdParty/.*" OR target_source_dir MATCHES
+                                                     ".*/third_party/.*"
      OR target_source_dir MATCHES ".*/3rdparty/.*"
   )
     message(STATUS "Skipping IWYU for third-party target: ${target_name}")
@@ -225,25 +248,35 @@ function(xsigma_apply_iwyu target_name)
     file(APPEND "${IWYU_LOG_FILE}" "# Generated by CMake IWYU integration\n")
     file(APPEND "${IWYU_LOG_FILE}" "# IWYU executable: ${IWYU_EXECUTABLE}\n")
     file(APPEND "${IWYU_LOG_FILE}" "# Mapping file: ${IWYU_MAPPING_FILE}\n")
-    file(APPEND "${IWYU_LOG_FILE}" "# Use Scripts/run_iwyu_analysis.py for detailed analysis\n")
+    file(APPEND "${IWYU_LOG_FILE}"
+         "# Use Scripts/run_iwyu_analysis.py for detailed analysis\n"
+    )
     file(APPEND "${IWYU_LOG_FILE}" "\n")
   endif()
 
-  # Generate per-target, per-language wrapper scripts that capture IWYU output to iwyu.log
+  # Generate per-target, per-language wrapper scripts that capture IWYU output
+  # to iwyu.log
   xsigma_create_iwyu_wrapper(
     ${target_name} CXX "-D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH"
     "-D_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING"
   )
-  xsigma_create_iwyu_wrapper(${target_name} C "-D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH")
-
-  # Apply IWYU via the logging wrapper (cmake -P; IWYU suggestions go to iwyu.log via stderr)
-  set_target_properties(
-    ${target_name}
-    PROPERTIES CXX_INCLUDE_WHAT_YOU_USE
-               "${CMAKE_COMMAND};-P;${PROJECT_BINARY_DIR}/iwyu_wrapper_${target_name}_CXX.cmake"
-               C_INCLUDE_WHAT_YOU_USE
-               "${CMAKE_COMMAND};-P;${PROJECT_BINARY_DIR}/iwyu_wrapper_${target_name}_C.cmake"
+  xsigma_create_iwyu_wrapper(
+    ${target_name} C "-D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH"
   )
 
-  message(STATUS "Applied IWYU to target: ${target_name} (logging to ${IWYU_LOG_FILE})")
+  # Apply IWYU via the logging wrapper (cmake -P; IWYU suggestions go to
+  # iwyu.log via stderr)
+  set_target_properties(
+    ${target_name}
+    PROPERTIES
+      CXX_INCLUDE_WHAT_YOU_USE
+      "${CMAKE_COMMAND};-P;${PROJECT_BINARY_DIR}/iwyu_wrapper_${target_name}_CXX.cmake"
+      C_INCLUDE_WHAT_YOU_USE
+      "${CMAKE_COMMAND};-P;${PROJECT_BINARY_DIR}/iwyu_wrapper_${target_name}_C.cmake"
+  )
+
+  message(
+    STATUS
+      "Applied IWYU to target: ${target_name} (logging to ${IWYU_LOG_FILE})"
+  )
 endfunction()

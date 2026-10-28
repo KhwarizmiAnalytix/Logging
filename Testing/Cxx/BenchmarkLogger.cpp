@@ -62,8 +62,7 @@ std::once_flag g_init_once;
 
 void ensure_logger_init()
 {
-    std::call_once(
-        g_init_once,
+    std::call_once(g_init_once,
         []()
         {
             logging::logger::set_enable_unsafe_signal_handler(false);
@@ -138,8 +137,7 @@ BENCHMARK_DEFINE_F(LoggerBench, FileLiteral)(benchmark::State& state)
     logging::logger::set_stderr_verbosity(logging::logger_verbosity_enum::VERBOSITY_INFO);
     const stderr_silencer silence;
     const std::string     path = file_path_for_thread(state.thread_index());
-    logging::logger::log_to_file(
-        path.c_str(),
+    logging::logger::log_to_file(path.c_str(),
         logging::logger::file_mode::truncate,
         logging::logger_verbosity_enum::VERBOSITY_INFO);
     for (auto _ : state)
@@ -157,8 +155,7 @@ BENCHMARK_DEFINE_F(LoggerBench, FileFormatted)(benchmark::State& state)
     logging::logger::set_stderr_verbosity(logging::logger_verbosity_enum::VERBOSITY_INFO);
     const stderr_silencer silence;
     const std::string     path = file_path_for_thread(state.thread_index());
-    logging::logger::log_to_file(
-        path.c_str(),
+    logging::logger::log_to_file(path.c_str(),
         logging::logger::file_mode::truncate,
         logging::logger_verbosity_enum::VERBOSITY_INFO);
     std::int64_t i = 0;

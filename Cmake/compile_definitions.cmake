@@ -1,10 +1,9 @@
 include_guard(GLOBAL)
 
 # =============================================================================
-# Feature flag
-# mapping Map CMake *ENABLE* variables to *HAS* compile definitions (1 or 0). definitions_list is
-# the name of the list variable to append to (e.g. CORE_COMPILE_DEFINITIONS,
-# MEMORY_COMPILE_DEFINITIONS).
+# Feature flag mapping Map CMake *ENABLE* variables to *HAS* compile definitions
+# (1 or 0). definitions_list is the name of the list variable to append to (e.g.
+# CORE_COMPILE_DEFINITIONS, MEMORY_COMPILE_DEFINITIONS).
 
 function(compile_definition definitions_list enable_flag)
   string(REPLACE "ENABLE" "HAS" definition_name "${enable_flag}")

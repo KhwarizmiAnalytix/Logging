@@ -103,7 +103,6 @@ Selection is a build-time choice. Each build defines exactly one
 |----------------|---------|---------|
 | `LOGGING_BACKEND` | `LOGURU` | Select backend |
 | `LOGGING_CXX_STANDARD` | `20` | Language standard; sources require C++17 facilities |
-| `LOGGING_ENABLE_MAGICENUM` | ON | Enum/string helpers |
 | `LOGGING_ENABLE_CXA_DEMANGLE` | Toolchain-dependent | Symbol demangling |
 | `LOGGING_ENABLE_PORTABLE_FLOAT_FORMAT` | OFF | Floating-point conversion fallback |
 | `LOGGING_FORMAT_USE_STD` | OFF | Select std-format in string utilities; requires C++20 library support |

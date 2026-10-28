@@ -1,18 +1,18 @@
 # lto.cmake — per-target LTO + linker
 #
 # Defaults (override with -D<PREFIX>_LTO_MODE=… and -D<PREFIX>_LINKER_CHOICE=…):
-#   PERFORMANCE + non-Debug  → LTO_MODE auto (Clang GNU driver: ThinLTO; GCC/MSVC: IPO)
-#   SUPPORT or Debug         → LTO off
-#   Linker default           → best available: LTO on prefers lld→mold→gold (Clang); off prefers mold→gold→lld
+# PERFORMANCE + non-Debug  → LTO_MODE auto (Clang GNU driver: ThinLTO; GCC/MSVC:
+# IPO) SUPPORT or Debug         → LTO off Linker default           → best
+# available: LTO on prefers lld→mold→gold (Clang); off prefers mold→gold→lld
 #
-# Modes: off | thin | full | ipo | auto
-# Linker: default | lld | mold | gold | lld-link
+# Modes: off | thin | full | ipo | auto Linker: default | lld | mold | gold |
+# lld-link
 #
-# Usage: include(lto) → xsigma_lto_compute_default → cache *_LTO_MODE → add_library →
-#        xsigma_target_apply_lto → xsigma_find_linker
+# Usage: include(lto) → xsigma_lto_compute_default → cache *_LTO_MODE →
+# add_library → xsigma_target_apply_lto → xsigma_find_linker
 #
-# xsigma_print_lto_linker_summary(<PREFIX>)
-#   Prints LTO mode and linker choice (and auto→thin/ipo hint) for module summaries.
+# xsigma_print_lto_linker_summary(<PREFIX>) Prints LTO mode and linker choice
+# (and auto→thin/ipo hint) for module summaries.
 # =============================================================================
 include_guard(GLOBAL)
 include(CheckIPOSupported)
@@ -26,8 +26,8 @@ function(_xsigma_msvc_link out)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
         set(_v TRUE)
-      elseif(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "" AND CMAKE_CXX_COMPILER MATCHES
-                                                                 "clang-cl"
+      elseif(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL ""
+             AND CMAKE_CXX_COMPILER MATCHES "clang-cl"
       )
         set(_v TRUE)
       endif()
@@ -109,9 +109,8 @@ function(xsigma_target_apply_lto target prefix)
   endif()
   get_target_property(_launch "${target}" RULE_LAUNCH_COMPILE)
   if(_launch MATCHES "sccache")
-    message(
-      FATAL_ERROR
-        "${target}: LTO incompatible with sccache — set ${prefix}_CACHE_BACKEND=none or LTO off"
+    message(FATAL_ERROR "${target}: LTO incompatible with sccache — set "
+                        "${prefix}_CACHE_BACKEND=none or LTO off"
     )
   endif()
 
@@ -125,7 +124,8 @@ function(xsigma_target_apply_lto target prefix)
   endif()
 
   if(_m STREQUAL "thin")
-    # -flto=thin emits bitcode; default try_compile links with bfd and fails — use static lib probe.
+    # -flto=thin emits bitcode; default try_compile links with bfd and fails —
+    # use static lib probe.
     set(_save_try "${CMAKE_TRY_COMPILE_TARGET_TYPE}")
     set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
     check_cxx_compiler_flag("-flto=thin" _ok)
@@ -171,7 +171,9 @@ function(xsigma_target_apply_lto target prefix)
   if(_m STREQUAL "ipo")
     check_ipo_supported(RESULT _iok OUTPUT _ierr LANGUAGES CXX)
     if(_iok)
-      set_target_properties("${target}" PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)
+      set_target_properties(
+        "${target}" PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON
+      )
       message(STATUS "${target}: IPO/LTO")
     else()
       message(WARNING "${target}: IPO unsupported: ${_ierr}")
@@ -187,10 +189,14 @@ function(_xsigma_apply_fuse target path)
     return()
   endif()
   _xsigma_msvc_link(_msvc)
-  if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND _msvc)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_CXX_COMPILER_ID STREQUAL
+                                              "Clang" AND _msvc
+  )
     return()
   endif()
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL
+                                               "GNU"
+  )
     get_filename_component(_b "${path}" NAME)
     string(REGEX REPLACE "\\.exe$" "" _s "${_b}")
     string(REPLACE "ld." "" _s "${_s}")
@@ -202,11 +208,14 @@ function(_xsigma_apply_fuse target path)
   endif()
 endfunction()
 
-# Resolve linker: lto_on picks LLVM-friendly order for Clang; otherwise speed-first order.
+# Resolve linker: lto_on picks LLVM-friendly order for Clang; otherwise
+# speed-first order.
 function(_xsigma_pick_link linker_choice target lto_on)
   set(_path "")
   if(NOT linker_choice STREQUAL "default")
-    find_program(_e NAMES "${linker_choice}" "ld.${linker_choice}" "${linker_choice}-link")
+    find_program(
+      _e NAMES "${linker_choice}" "ld.${linker_choice}" "${linker_choice}-link"
+    )
     if(_e)
       set(_path "${_e}")
       message(STATUS "Linker: explicit '${linker_choice}'")
@@ -259,7 +268,9 @@ function(_xsigma_pick_link linker_choice target lto_on)
   endif()
 
   if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL
+                                                "GNU"
+    )
       _xsigma_first_linker(_path ld.lld lld)
       if(_path)
         _xsigma_apply_fuse("${target}" "${_path}")
@@ -270,7 +281,9 @@ endfunction()
 
 function(xsigma_find_linker linker_choice target_name)
   set(_lto FALSE)
-  if(CMAKE_INTERPROCEDURAL_OPTIMIZATION OR "$CACHE{CMAKE_INTERPROCEDURAL_OPTIMIZATION}")
+  if(CMAKE_INTERPROCEDURAL_OPTIMIZATION
+     OR "$CACHE{CMAKE_INTERPROCEDURAL_OPTIMIZATION}"
+  )
     set(_lto TRUE)
   endif()
   if(NOT _lto AND ARGC GREATER 2)

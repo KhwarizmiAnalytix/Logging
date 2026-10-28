@@ -49,11 +49,6 @@ def logging_defines():
         ],
     })
 
-    defines += select({
-        "//bazel:disable_magic_enum": ["LOGGING_HAS_MAGICENUM=0"],
-        "//conditions:default": ["LOGGING_HAS_MAGICENUM=1"],
-    })
-
     # CMake probes <cxxabi.h>; Bazel's Windows toolchain does not provide it.
     # Non-Windows toolchains retain the historical compiler-detected default,
     # with an explicit opt-out for targets that lack the Itanium ABI.

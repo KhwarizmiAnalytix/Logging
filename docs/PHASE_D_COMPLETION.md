@@ -1,6 +1,6 @@
 # Phase D: Structured Logging & Callback Reentrancy Hardening
 
-**Status:** ✅ IMPLEMENTATION COMPLETE  
+**Status:** ✅ IMPLEMENTATION COMPLETE
 **Date:** 2026-09-25
 
 ---
@@ -147,7 +147,7 @@ TEST(StructuredLogging, BasicFields) {
     auto f2 = logging::kv("price", 99.99);
     auto f3 = logging::kv("status", "active");
     auto f4 = logging::kv("enabled", true);
-    
+
     // All should compile and construct correctly
     EXPECT_TRUE(std::holds_alternative<int64_t>(f1.value));
 }
@@ -167,38 +167,38 @@ TEST(StructuredLogging, MacroUsage) {
 ```cpp
 TEST(CallbackReentrancy, NestedLoggingFromCallback) {
     bool nested_log_reached = false;
-    
+
     auto callback = [&](void*, const logging::logger::Message& msg) {
         nested_log_reached = true;
         LOGGING_LOG_INFO("Nested log from callback");
         // Should not deadlock, should not recursively invoke callbacks
     };
-    
+
     logging::logger::add_callback("test", callback, &nested_log_reached,
         logging::logger_verbosity_enum::VERBOSITY_INFO);
-    
+
     LOGGING_LOG_INFO("Outer log");  // Triggers callback
     EXPECT_TRUE(nested_log_reached);  // Callback was invoked
-    
+
     logging::logger::remove_callback("test");
 }
 
 TEST(CallbackReentrancy, ConcurrentCallbackModification) {
     // Callback adds another callback (reentrancy)
     bool inner_invoked = false;
-    
+
     auto outer_callback = [&](void*, const logging::logger::Message&) {
-        logging::logger::add_callback("inner", 
+        logging::logger::add_callback("inner",
             [&](void*, const logging::logger::Message&) {
                 inner_invoked = true;
             },
             &inner_invoked, logging::logger_verbosity_enum::VERBOSITY_INFO);
         // Should not deadlock
     };
-    
+
     logging::logger::add_callback("outer", outer_callback, nullptr,
         logging::logger_verbosity_enum::VERBOSITY_INFO);
-    
+
     LOGGING_LOG_INFO("Trigger outer");
     EXPECT_TRUE(inner_invoked);  // Should eventually be invoked
 }
@@ -225,7 +225,7 @@ TEST(CallbackReentrancy, ConcurrentCallbackModification) {
 
 - **Callback lifecycle:** `add_callback` / `remove_callback` not synchronized with callback invocation
   - **Mitigation:** Callbacks are snapshotted mid-dispatch, so adds/removes don't affect current iteration
-  
+
 - **Field span lifetime:** `log_record.fields` uses `std::span` which requires caller to maintain field lifetime
   - **Mitigation:** Typically fields are stack-allocated, so lifetime is guaranteed within macro scope
 

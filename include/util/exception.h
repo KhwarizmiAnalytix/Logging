@@ -157,11 +157,10 @@ public:
         source_location source_location, std::string msg, exception_category category);
 
     // Base constructor
-    LOGGING_API exception(
-        std::string        msg,
-        std::string        backtrace,
-        const void*        caller   = nullptr,
-        exception_category category = exception_category::GENERIC);
+    LOGGING_API exception(std::string msg,
+        std::string                   backtrace,
+        const void*                   caller   = nullptr,
+        exception_category            category = exception_category::GENERIC);
 
     /**
      * @brief Constructor with nested exception
@@ -171,11 +170,10 @@ public:
      * @param nested Nested exception for chaining
      * @param category Error category
      */
-    LOGGING_API exception(
-        source_location            source_location,
-        std::string                msg,
-        std::shared_ptr<exception> nested,
-        exception_category         category = exception_category::GENERIC);
+    LOGGING_API exception(source_location source_location,
+        std::string                       msg,
+        std::shared_ptr<exception>        nested,
+        exception_category                category = exception_category::GENERIC);
 
     // Add some new context to the message stack.  The last added context
     // will be formatted at the end of the context list upon printing.
@@ -240,19 +238,19 @@ private:
  * @param error_cat Error category enum value
  * @param msg Error message string
  */
-#define LOGGING_THROW_IMPL(error_cat, msg)                                              \
-    do                                                                                  \
-    {                                                                                   \
-        logging::source_location loc;                                                   \
-        loc.function = __func__;                                                        \
-        loc.file     = __FILE__;                                                        \
-        loc.line     = static_cast<int>(__LINE__);                                      \
-        if (logging::get_exception_mode() == logging::exception_mode::THROW)            \
-        {                                                                               \
-            throw logging::exception(loc, msg, logging::exception_category::error_cat); \
-        }                                                                               \
-        LOGGING_LOG_FATAL("Fatal error ({}): {}", #error_cat, msg);                     \
-        std::abort();                                                                   \
+#define LOGGING_THROW_IMPL(error_cat, msg)                                                         \
+    do                                                                                             \
+    {                                                                                              \
+        logging::source_location loc;                                                              \
+        loc.function = __func__;                                                                   \
+        loc.file     = __FILE__;                                                                   \
+        loc.line     = static_cast<int>(__LINE__);                                                 \
+        if (logging::get_exception_mode() == logging::exception_mode::THROW)                       \
+        {                                                                                          \
+            throw logging::exception(loc, msg, logging::exception_category::error_cat);            \
+        }                                                                                          \
+        LOGGING_LOG_FATAL("Fatal error ({}): {}", #error_cat, msg);                                \
+        std::abort();                                                                              \
     } while (0)
 
 /**
@@ -269,7 +267,7 @@ private:
  * LOGGING_THROW("Invalid state: {}", state_name);
  * ```
  */
-#define LOGGING_THROW(format_str, ...) \
+#define LOGGING_THROW(format_str, ...)                                                             \
     LOGGING_THROW_IMPL(GENERIC, logging::strings::format(format_str, ##__VA_ARGS__))
 
 // ============================================================================
@@ -320,14 +318,14 @@ inline std::string format_check_msg(const char* cond_str)
  * LOGGING_CHECK(!empty());  // Simple check without message
  * ```
  */
-#define LOGGING_CHECK(cond, ...)                                                        \
-    do                                                                                  \
-    {                                                                                   \
-        if LOGGING_UNLIKELY (!(cond))                                                   \
-        {                                                                               \
-            std::string msg = logging::details::format_check_msg(#cond, ##__VA_ARGS__); \
-            LOGGING_THROW("{}", msg);                                                   \
-        }                                                                               \
+#define LOGGING_CHECK(cond, ...)                                                                   \
+    do                                                                                             \
+    {                                                                                              \
+        if LOGGING_UNLIKELY (!(cond))                                                              \
+        {                                                                                          \
+            std::string msg = logging::details::format_check_msg(#cond, ##__VA_ARGS__);            \
+            LOGGING_THROW("{}", msg);                                                              \
+        }                                                                                          \
     } while (0)
 
 /**
@@ -358,32 +356,31 @@ inline std::string format_check_msg(const char* cond_str)
 #define LOGGING_CHECK_IF_NOT_ON_CUDA(cond, ...) LOGGING_CHECK(cond, ##__VA_ARGS__)
 #endif
 
-#define LOGGING_CHECK_ALL_POSITIVE(V)                                  \
-    LOGGING_CHECK(                                                     \
-        std::all_of(V.begin(), V.end(), [](auto x) { return x > 0; }), \
+#define LOGGING_CHECK_ALL_POSITIVE(V)                                                              \
+    LOGGING_CHECK(std::all_of(V.begin(), V.end(), [](auto x) { return x > 0; }),                   \
         "All elements must be positive");
 
-#define LOGGING_CHECK_ALL_FINITE(V)                                                              \
-    LOGGING_CHECK(                                                                               \
-        std::none_of(V.begin(), V.end(), [](auto x) { return std::isnan(x) || std::isinf(x); }), \
+#define LOGGING_CHECK_ALL_FINITE(V)                                                                \
+    LOGGING_CHECK(                                                                                 \
+        std::none_of(V.begin(), V.end(), [](auto x) { return std::isnan(x) || std::isinf(x); }),   \
         "All elements must be finite numbers");
 
-#define LOGGING_CHECK_STRICTLY_INCREASING(V)                                                      \
-    LOGGING_CHECK(                                                                                \
-        std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a >= b; }) == V.end(), \
+#define LOGGING_CHECK_STRICTLY_INCREASING(V)                                                       \
+    LOGGING_CHECK(                                                                                 \
+        std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a >= b; }) == V.end(),  \
         "Elements must be in strictly increasing order");
 
-#define LOGGING_CHECK_STRICTLY_DECREASING(V)                                                      \
-    LOGGING_CHECK(                                                                                \
-        std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a <= b; }) == V.end(), \
+#define LOGGING_CHECK_STRICTLY_DECREASING(V)                                                       \
+    LOGGING_CHECK(                                                                                 \
+        std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a <= b; }) == V.end(),  \
         "Elements must be in strictly decreasing order");
 
-#define LOGGING_CHECK_STRICTLY_ORDERED(V)                                                  \
-    LOGGING_CHECK(                                                                         \
-        ((std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a >= b; }) == \
-          V.end()) ||                                                                      \
-         (std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a <= b; }) == \
-          V.end())),                                                                       \
+#define LOGGING_CHECK_STRICTLY_ORDERED(V)                                                          \
+    LOGGING_CHECK(                                                                                 \
+        ((std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a >= b; }) ==         \
+             V.end()) ||                                                                           \
+            (std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a <= b; }) ==      \
+                V.end())),                                                                         \
         "Elements must be strictly ordered (increasing or decreasing)");
 
 /**
@@ -400,7 +397,7 @@ inline std::string format_check_msg(const char* cond_str)
  * LOGGING_NOT_IMPLEMENTED("Feature {} not yet implemented", feature_name);
  * ```
  */
-#define LOGGING_NOT_IMPLEMENTED(format_str, ...) \
+#define LOGGING_NOT_IMPLEMENTED(format_str, ...)                                                   \
     LOGGING_THROW_IMPL(NOT_IMPLEMENTED, logging::strings::format(format_str, ##__VA_ARGS__))
 
 /**
@@ -421,10 +418,10 @@ inline std::string format_check_msg(const char* cond_str)
 #ifdef NDEBUG
 #define LOGGING_CHECK_DEBUG(condition, ...)
 #else
-#define LOGGING_CHECK_DEBUG(condition, ...)      \
-    do                                           \
-    {                                            \
-        LOGGING_CHECK(condition, ##__VA_ARGS__); \
+#define LOGGING_CHECK_DEBUG(condition, ...)                                                        \
+    do                                                                                             \
+    {                                                                                              \
+        LOGGING_CHECK(condition, ##__VA_ARGS__);                                                   \
     } while (0)
 #endif
 
@@ -443,17 +440,17 @@ inline std::string format_check_msg(const char* cond_str)
 #if defined(__CUDACC__) || defined(__HIPCC__)
 #define LOGGING_CHECK_DEBUG_IF_NOT_ON_CUDA(condition, ...)
 #else
-#define LOGGING_CHECK_DEBUG_IF_NOT_ON_CUDA(condition, ...) \
+#define LOGGING_CHECK_DEBUG_IF_NOT_ON_CUDA(condition, ...)                                         \
     LOGGING_CHECK_DEBUG(condition, ##__VA_ARGS__)
 #endif
 
-#define LOGGING_WARN_ONCE(msg)                  \
-    do                                          \
-    {                                           \
-        static std::atomic<bool> warned{false}; \
-        if (!warned.exchange(true))             \
-        {                                       \
-            LOGGING_LOG_WARNING(msg);           \
-        }                                       \
+#define LOGGING_WARN_ONCE(msg)                                                                     \
+    do                                                                                             \
+    {                                                                                              \
+        static std::atomic<bool> warned{false};                                                    \
+        if (!warned.exchange(true))                                                                \
+        {                                                                                          \
+            LOGGING_LOG_WARNING(msg);                                                              \
+        }                                                                                          \
     } while (0)
 #endif  // LOGGING_UTIL_EXCEPTION_H

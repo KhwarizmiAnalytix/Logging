@@ -1,5 +1,5 @@
-# Make sure Crun is linked in with the native compiler; it is not used by default for shared
-# libraries and is required for things like Java to work.
+# Make sure Crun is linked in with the native compiler; it is not used by
+# default for shared libraries and is required for things like Java to work.
 if(CMAKE_SYSTEM MATCHES "SunOS.*")
   if(NOT CMAKE_COMPILER_IS_GNUCXX)
     message(STATUS "SunOS + Sun CC: searching for Crun/Cstd runtime libraries")
@@ -17,24 +17,39 @@ if(CMAKE_SYSTEM MATCHES "SunOS.*")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
-  message(STATUS "Emscripten: enabling WebAssembly exception handling (-fwasm-exceptions)")
-  # Enable exceptions because XSigma and third party code rely on C++ exceptions. Allow C++ to
-  # catch exceptions. Emscripten disables it by default due to high overhead. Generate helper
-  # functions to get stack traces for uncaught exceptions
+  message(
+    STATUS
+      "Emscripten: enabling WebAssembly exception handling (-fwasm-exceptions)"
+  )
+  # Enable exceptions because XSigma and third party code rely on C++
+  # exceptions. Allow C++ to catch exceptions. Emscripten disables it by default
+  # due to high overhead. Generate helper functions to get stack traces for
+  # uncaught exceptions
   string(APPEND CMAKE_CXX_FLAGS " -fwasm-exceptions")
   string(APPEND CMAKE_C_FLAGS " -fwasm-exceptions")
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -fwasm-exceptions -sEXCEPTION_STACK_TRACES=1")
-  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -fwasm-exceptions -sEXCEPTION_STACK_TRACES=1")
-  string(APPEND CMAKE_MODULE_LINKER_FLAGS " -fwasm-exceptions -sEXCEPTION_STACK_TRACES=1")
+  string(APPEND CMAKE_EXE_LINKER_FLAGS
+         " -fwasm-exceptions -sEXCEPTION_STACK_TRACES=1"
+  )
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS
+         " -fwasm-exceptions -sEXCEPTION_STACK_TRACES=1"
+  )
+  string(APPEND CMAKE_MODULE_LINKER_FLAGS
+         " -fwasm-exceptions -sEXCEPTION_STACK_TRACES=1"
+  )
   # Consumers linking to XSigma also need to add the exception flag.
   if(TARGET XSigmaPlatform)
-    target_link_options(XSigmaPlatform INTERFACE "-fwasm-exceptions" "-sEXCEPTION_STACK_TRACES=1")
+    target_link_options(
+      XSigmaPlatform INTERFACE "-fwasm-exceptions" "-sEXCEPTION_STACK_TRACES=1"
+    )
   endif()
   if(PROJECT_WEBASSEMBLY_THREADS)
-    message(STATUS "Emscripten: enabling pthreads (-pthread -Wno-pthreads-mem-growth)")
-    # Remove after https://github.com/WebAssembly/design/issues/1271 is closed Set Wno flag globally
-    # because even though the flag is added in XSigmaCompilerWarningFlags.cmake, wrapping tools do
-    # not link with `XSigmaPlatform`
+    message(
+      STATUS "Emscripten: enabling pthreads (-pthread -Wno-pthreads-mem-growth)"
+    )
+    # Remove after https://github.com/WebAssembly/design/issues/1271 is closed
+    # Set Wno flag globally because even though the flag is added in
+    # XSigmaCompilerWarningFlags.cmake, wrapping tools do not link with
+    # `XSigmaPlatform`
     string(APPEND CMAKE_CXX_FLAGS " -pthread -Wno-pthreads-mem-growth")
     string(APPEND CMAKE_C_FLAGS " -pthread -Wno-pthreads-mem-growth")
     string(APPEND CMAKE_EXE_LINKER_FLAGS " -pthread")
@@ -42,7 +57,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     string(APPEND CMAKE_MODULE_LINKER_FLAGS " -pthread")
     # Consumers linking to XSigma also need to add the pthread flag.
     if(TARGET XSigmaPlatform)
-      target_compile_options(XSigmaPlatform INTERFACE "-pthread" "-Wno-pthreads-mem-growth")
+      target_compile_options(
+        XSigmaPlatform INTERFACE "-pthread" "-Wno-pthreads-mem-growth"
+      )
       target_link_options(XSigmaPlatform INTERFACE "-pthread")
     endif()
   endif()
@@ -82,7 +99,10 @@ if(CMAKE_COMPILER_IS_GNUCXX)
   if(CMAKE_SYSTEM MATCHES "SunOS.*")
     # Disable warnings that occur in X11 headers.
     if(DART_ROOT AND BUILD_TESTING)
-      message(STATUS "  GCC/SunOS: suppressing unknown-pragmas warnings for X11 headers")
+      message(
+        STATUS
+          "  GCC/SunOS: suppressing unknown-pragmas warnings for X11 headers"
+      )
       string(APPEND CMAKE_CXX_FLAGS " -Wno-unknown-pragmas")
       string(APPEND CMAKE_C_FLAGS " -Wno-unknown-pragmas")
     endif()
@@ -98,7 +118,8 @@ else()
   endif()
   if(CMAKE_SYSTEM MATCHES "AIX.*")
     message(
-      STATUS "AIX: enabling RTTI (-qrtti=all), suppressing duplicate symbol warnings (-bhalt:5)"
+      STATUS "AIX: enabling RTTI (-qrtti=all), suppressing duplicate symbol "
+             "warnings (-bhalt:5)"
     )
     # allow t-ypeid and d-ynamic_cast usage (normally off by default on xlC)
     string(APPEND CMAKE_CXX_FLAGS " -qrtti=all")
@@ -108,7 +129,9 @@ else()
     string(APPEND CMAKE_MODULE_LINKER_FLAGS " -bhalt:5")
   endif()
   if(CMAKE_SYSTEM MATCHES "HP-UX.*")
-    message(STATUS "HP-UX: adding compatibility warning flags (+W2111 +W2236 +W4276)")
+    message(
+      STATUS "HP-UX: adding compatibility warning flags (+W2111 +W2236 +W4276)"
+    )
     string(APPEND CMAKE_C_FLAGS " +W2111 +W2236 +W4276")
     string(APPEND CMAKE_CXX_FLAGS " +W2111 +W2236 +W4276")
   endif()
@@ -130,7 +153,9 @@ endif()
 
 # if so, test whether -i_dynamic is needed
 if(_MAY_BE_INTEL_COMPILER)
-  message(STATUS "Intel compiler detected: testing whether -i_dynamic is required")
+  message(
+    STATUS "Intel compiler detected: testing whether -i_dynamic is required"
+  )
   include(${CMAKE_CURRENT_LIST_DIR}/TestNO_ICC_IDYNAMIC_NEEDED.cmake)
   testno_icc_idynamic_needed(NO_ICC_IDYNAMIC_NEEDED ${CMAKE_CURRENT_LIST_DIR})
   if(NO_ICC_IDYNAMIC_NEEDED)
@@ -144,31 +169,34 @@ endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "PGI")
   message(
     STATUS
-      "PGI compiler: suppressing diagnostic 236 (constant value asserts) and 381 (redundant semicolons)"
+      "PGI compiler: suppressing diagnostic 236 (constant value asserts) and "
+      "381 (redundant semicolons)"
   )
-  # --diag_suppress=236 is for constant value asserts used for error handling This can be restricted
-  # to the implementation and doesn't need to propagate
+  # --diag_suppress=236 is for constant value asserts used for error handling
+  # This can be restricted to the implementation and doesn't need to propagate
   string(APPEND CMAKE_CXX_FLAGS " --diag_suppress=236")
 
-  # --diag_suppress=381 is for redundant semi-colons used in macros This needs to propagate to
-  # anything that includes XSigma headers
+  # --diag_suppress=381 is for redundant semi-colons used in macros This needs
+  # to propagate to anything that includes XSigma headers
   string(APPEND CMAKE_CXX_FLAGS " --diag_suppress=381")
 endif()
 
 if(MSVC AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
-                 AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU"))
+                 AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU")
+)
   message(STATUS "MSVC compiler detected: applying MSVC-specific flags")
-  # Use the highest warning level for visual c++ compiler. set(CMAKE_CXX_WARNING_LEVEL 4)
-  # if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]") string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_CXX_FLAGS
-  # "${CMAKE_CXX_FLAGS}") else() set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4") endif() Enable C++20
+  # Use the highest warning level for visual c++ compiler.
+  # set(CMAKE_CXX_WARNING_LEVEL 4) if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
+  # string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  # else() set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4") endif() Enable C++20
   # support: /Zc:__cplusplus
   message(STATUS "  MSVC: enabling C++20 __cplusplus macro (/Zc:__cplusplus)")
   string(APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus")
-  # Treat warnings as errors set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX") Disable C4244: conversion
-  # warnings
+  # Treat warnings as errors set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
+  # Disable C4244: conversion warnings
   message(
-    STATUS
-      "  MSVC: disabling conversion/truncation/signed warnings (/wd4244 /wd4267 /wd4715 /wd4018)"
+    STATUS "  MSVC: disabling conversion/truncation/signed warnings (/wd4244 "
+           "/wd4267 /wd4715 /wd4018)"
   )
   string(APPEND CMAKE_CXX_FLAGS " /wd4244 /wd4267 /wd4715 /wd4018")
   string(APPEND CMAKE_C_FLAGS " /wd4244 /wd4267 /wd4715 /wd4018")
@@ -179,13 +207,17 @@ if(MSVC AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
   set(CMAKE_CXX_MP_NUM_PROCESSORS ${PROCESSOR_COUNT}
       CACHE STRING "The maximum number of processes for the /MP flag"
   )
-  if(CMAKE_CXX_MP_FLAG AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_GENERATOR MATCHES
-                                                                           "Ninja")
+  if(CMAKE_CXX_MP_FLAG AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+                                AND CMAKE_GENERATOR MATCHES "Ninja")
   )
-    message(STATUS "  MSVC: parallel compilation enabled (/MP${CMAKE_CXX_MP_NUM_PROCESSORS})")
+    message(STATUS "  MSVC: parallel compilation enabled "
+                   "(/MP${CMAKE_CXX_MP_NUM_PROCESSORS})"
+    )
     string(APPEND CMAKE_CXX_FLAGS " /MP${CMAKE_CXX_MP_NUM_PROCESSORS}")
     string(APPEND CMAKE_C_FLAGS " /MP${CMAKE_CXX_MP_NUM_PROCESSORS}")
-  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_GENERATOR MATCHES "Ninja")
+  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_GENERATOR MATCHES
+                                                    "Ninja"
+  )
     message(STATUS "  Clang/Ninja: skipping /MP — Ninja handles parallelism")
   endif()
 
@@ -198,16 +230,16 @@ if(MSVC AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
   # invocations, even with /FS. Embed debug info in each object instead.
   # Normalize legacy CMake defaults as well as CMP0141's target default.
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT Embedded)
-  set(_logging_debug_configs Debug Release RelWithDebInfo MinSizeRel ${CMAKE_CONFIGURATION_TYPES}
-                            ${CMAKE_BUILD_TYPE}
+  set(_logging_debug_configs Debug Release RelWithDebInfo MinSizeRel
+                             ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE}
   )
   list(REMOVE_DUPLICATES _logging_debug_configs)
   foreach(_language C CXX)
     foreach(_config IN LISTS _logging_debug_configs)
       string(TOUPPER "${_config}" _config_upper)
       set(_flags_var "CMAKE_${_language}_FLAGS_${_config_upper}")
-      string(REGEX REPLACE "(^|[ \t])[-/]Z[iI]([ \t]|$)" "\\1/Z7\\2" ${_flags_var}
-                           "${${_flags_var}}"
+      string(REGEX REPLACE "(^|[ \t])[-/]Z[iI]([ \t]|$)" "\\1/Z7\\2"
+                           ${_flags_var} "${${_flags_var}}"
       )
     endforeach()
   endforeach()
@@ -226,39 +258,46 @@ if(MSVC AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
   string(APPEND CMAKE_C_FLAGS " /EHsc")
 endif()
 
-# Suppress MSVC CRT deprecation warnings for all compilers that target the Windows CRT
-# (cl.exe, clang-cl, clang++ with MSVC CRT). MinGW ships its own CRT that does not use
-# these macros, so it is excluded.
+# Suppress MSVC CRT deprecation warnings for all compilers that target the
+# Windows CRT (cl.exe, clang-cl, clang++ with MSVC CRT). MinGW ships its own CRT
+# that does not use these macros, so it is excluded.
 if(WIN32 AND NOT MINGW)
-  add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS)
+  add_definitions(
+    -D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE
+    -D_CRT_SECURE_NO_WARNINGS
+  )
   add_definitions(-D_SCL_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_WARNINGS)
 endif()
 
 if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   message(STATUS "Clang on Windows: applying Clang-specific flags")
 
-  # Colored diagnostics — Ninja relays Clang's ANSI codes correctly; MSVC color codes are not
+  # Colored diagnostics — Ninja relays Clang's ANSI codes correctly; MSVC color
+  # codes are not
   string(APPEND CMAKE_CXX_FLAGS " -fcolor-diagnostics")
   string(APPEND CMAKE_C_FLAGS " -fcolor-diagnostics")
 
-  # Suppress spurious warnings that fire when MSVC-style flags are mixed with Clang
+  # Suppress spurious warnings that fire when MSVC-style flags are mixed with
+  # Clang
   string(APPEND CMAKE_CXX_FLAGS " -Wno-unused-command-line-argument")
   string(APPEND CMAKE_C_FLAGS " -Wno-unused-command-line-argument")
 
   # MSVC CRT marks getenv/strcpy/etc. with __declspec(deprecated) under Clang;
-  # _CRT_SECURE_NO_WARNINGS removes the #pragma form but not the __declspec form, so Clang still
-  # fires -Wdeprecated-declarations
+  # _CRT_SECURE_NO_WARNINGS removes the #pragma form but not the __declspec
+  # form, so Clang still fires -Wdeprecated-declarations
   string(APPEND CMAKE_CXX_FLAGS " -Wno-deprecated-declarations")
   string(APPEND CMAKE_C_FLAGS " -Wno-deprecated-declarations")
 
-  # Third-party C code (e.g. mimalloc) uses old-style K&R function declarations without prototypes
+  # Third-party C code (e.g. mimalloc) uses old-style K&R function declarations
+  # without prototypes
   string(APPEND CMAKE_C_FLAGS " -Wno-strict-prototypes")
 
   if(CMAKE_GENERATOR MATCHES "Ninja")
     message(STATUS "  Clang/Ninja/Windows: applying Ninja-specific adjustments")
 
     if(NOT MSVC)
-      # Plain clang++ driver: emit CodeView debug info so WinDbg / VS can read symbols
+      # Plain clang++ driver: emit CodeView debug info so WinDbg / VS can read
+      # symbols
       string(APPEND CMAKE_CXX_FLAGS " -gcodeview")
       string(APPEND CMAKE_C_FLAGS " -gcodeview")
     endif()
@@ -280,7 +319,8 @@ if(APPLE)
 
   set(LLVM_LINK_FLAGS
       -L${_xsigma_llvm_prefix}/lib/c++ -L${_xsigma_llvm_prefix}/lib
-      -Wl,-rpath,${_xsigma_llvm_prefix}/lib/c++ -Wl,-rpath,${_xsigma_llvm_prefix}/lib
+      -Wl,-rpath,${_xsigma_llvm_prefix}/lib/c++
+      -Wl,-rpath,${_xsigma_llvm_prefix}/lib
   )
 
   # Add each flag only if not already included
@@ -297,7 +337,8 @@ if(UNIX AND NOT APPLE)
   include(CheckCCompilerFlag)
   include(CheckCXXSourceCompiles)
 
-  # Append flag to CMAKE_CXX_FLAGS and CMAKE_C_FLAGS if both compilers accept it.
+  # Append flag to CMAKE_CXX_FLAGS and CMAKE_C_FLAGS if both compilers accept
+  # it.
   macro(_xsigma_add_compile_flag _flag)
     string(MAKE_C_IDENTIFIER "${_flag}" _id)
     check_cxx_compiler_flag("${_flag}" _CXX_HAS${_id})
@@ -311,7 +352,8 @@ if(UNIX AND NOT APPLE)
   endmacro()
 
   # Append flag to all linker flag variables if the linker accepts it. Uses
-  # CMAKE_REQUIRED_LINK_OPTIONS (CMake >= 3.14) since check_linker_flag needs 3.18.
+  # CMAKE_REQUIRED_LINK_OPTIONS (CMake >= 3.14) since check_linker_flag needs
+  # 3.18.
   macro(_xsigma_add_linker_flag _flag)
     string(MAKE_C_IDENTIFIER "${_flag}" _id)
     set(CMAKE_REQUIRED_LINK_OPTIONS "${_flag}")

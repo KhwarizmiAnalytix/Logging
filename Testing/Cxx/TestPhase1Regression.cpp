@@ -244,7 +244,7 @@ TEST_F(Phase1Regression, DuplicateFilePathReplaces)
     // and the old sink/callback/file-handle from the first registration must
     // be fully unregistered -- not left running alongside the new one (which
     // would duplicate every subsequent write).
-    const std::string contents = read_text_file(path);
+    const std::string contents          = read_text_file(path);
     const auto        count_occurrences = [](const std::string& haystack, const std::string& needle)
     {
         size_t count = 0;

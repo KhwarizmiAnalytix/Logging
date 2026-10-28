@@ -14,7 +14,6 @@
  * @date 2024
  */
 
-
 #include <stdarg.h>  // for va_list
 
 #include <algorithm>  // for transform
@@ -37,7 +36,6 @@
 // ENUM CONVERSION UTILITIES
 // =============================================================================
 
-#if LOGGING_HAS_MAGICENUM
 #include <magic_enum/magic_enum.hpp>
 
 namespace logging
@@ -77,35 +75,6 @@ template <typename E> E string_to_enum(std::string_view str)
     return magic_enum::enum_cast<E>(str, magic_enum::case_insensitive).value();
 }
 }  // namespace logging
-#else
-namespace logging
-{
-/**
- * @brief Convert an enum value to its numeric string representation (fallback)
- * @tparam E The enum type
- * @param x The enum value to convert
- * @return String containing the numeric representation
- * @note This is a fallback implementation when magic_enum is not available
- */
-template <typename E> inline std::string enum_to_string(E x)
-{
-    return std::to_string(static_cast<int>(x));
-}
-
-/**
- * @brief Convert a string to an enum value using numeric conversion (fallback)
- * @tparam E The enum type
- * @param str The string containing numeric value
- * @return The corresponding enum value
- * @throws std::invalid_argument if the string is not a valid integer
- * @note This is a fallback implementation when magic_enum is not available
- */
-template <typename E> E string_to_enum(std::string_view str)
-{
-    return static_cast<E>(std::stoi(std::string(str)));
-}
-}  // namespace logging
-#endif
 
 // =============================================================================
 // TYPE INTROSPECTION AND DEMANGLING UTILITIES

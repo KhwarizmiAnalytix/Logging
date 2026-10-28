@@ -118,7 +118,8 @@ private:
     std::string                        message_;
     std::map<std::string, std::string> fields_;
 
-    LOGGING_API void emit_structured(logger_verbosity_enum lv, const char* fname, unsigned line) const;
+    LOGGING_API void emit_structured(
+        logger_verbosity_enum lv, const char* fname, unsigned line) const;
 };
 
 /**

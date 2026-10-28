@@ -23,7 +23,9 @@ TEST(Logger, thread_name_is_per_thread)
         {
             logging::logger::set_thread_name("T1");
             t1_ready.store(true);
-            while (!t2_ready.load()) {}
+            while (!t2_ready.load())
+            {
+            }
             t1_seen = logging::logger::get_thread_name();
         });
     std::thread t2(
@@ -31,7 +33,9 @@ TEST(Logger, thread_name_is_per_thread)
         {
             logging::logger::set_thread_name("T2");
             t2_ready.store(true);
-            while (!t1_ready.load()) {}
+            while (!t1_ready.load())
+            {
+            }
             logging::logger::init();
             t2_seen = logging::logger::get_thread_name();
         });

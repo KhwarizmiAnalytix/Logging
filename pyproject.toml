@@ -11,3 +11,10 @@ target-version = "py312"
 
 [tool.codespell]
 skip = "ThirdParty,.git,build,build_*,__pycache__"
+
+[tool.lint-tool]
+# Non-stdlib names imported by Scripts/*.py. "helpers" is this repo's own
+# Scripts/helpers/ package (not third-party); colorama, psutil, and
+# coverage_tool are optional third-party packages already guarded by
+# try/except ImportError at each call site.
+import-allowlist = ["helpers", "colorama", "psutil", "coverage_tool"]

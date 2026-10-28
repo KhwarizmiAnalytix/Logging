@@ -1,17 +1,13 @@
 # =============================================================================
-# XSigma Spell
-# Checking Configuration Module
+# XSigma Spell Checking Configuration Module
 
-# This module configures codespell as a check-only build step. Misspellings fail the
-# build; sources are never rewritten. ThirdParty trees are skipped.
+# This module configures codespell as a check-only build step. Misspellings fail
+# the build; sources are never rewritten. ThirdParty trees are skipped.
 #
 # Usage in each module's CMakeLists.txt:
 #
 # option(XXX_ENABLE_SPELL "Enable spell checking for XXX" OFF)
-# mark_as_advanced(XXX_ENABLE_SPELL)
-# if(XXX_ENABLE_SPELL)
-#   include(spell)
-# endif()
+# mark_as_advanced(XXX_ENABLE_SPELL) if(XXX_ENABLE_SPELL) include(spell) endif()
 
 # Skip spell checking for third-party libraries
 get_filename_component(_spell_dir_name "${CMAKE_CURRENT_SOURCE_DIR}" NAME)
@@ -53,9 +49,13 @@ else()
   message(STATUS "Found codespell: ${CODESPELL_EXECUTABLE}")
 
   set(_spell_args)
-  set(_spell_ignore_file "${CMAKE_SOURCE_DIR}/Scripts/suppressions/spell_suppressions.txt")
+  set(_spell_ignore_file
+      "${CMAKE_SOURCE_DIR}/Scripts/suppressions/spell_suppressions.txt"
+  )
   if(NOT EXISTS "${_spell_ignore_file}")
-    message(FATAL_ERROR "Spell suppression file not found: ${_spell_ignore_file}")
+    message(
+      FATAL_ERROR "Spell suppression file not found: ${_spell_ignore_file}"
+    )
   endif()
   list(APPEND _spell_args "--ignore-words=${_spell_ignore_file}")
   message(STATUS "Using spell suppression file: ${_spell_ignore_file}")
@@ -93,7 +93,8 @@ else()
   )
 
   message(
-    STATUS "${_spell_dir_name}_ENABLE_SPELL is ON: codespell is check-only (no --write-changes)"
+    STATUS "${_spell_dir_name}_ENABLE_SPELL is ON: codespell is check-only (no "
+           "--write-changes)"
   )
 endif()
 

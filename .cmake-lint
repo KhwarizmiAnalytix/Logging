@@ -1,2 +1,14 @@
 # CMake Lint Configuration
 # Minimal configuration for cmake_linter
+
+# cmake-format aligns wrapped continuation lines (e.g. multi-line elseif()
+# conditions) to the opening parenthesis, which is not always an even column.
+# That alignment is intentional, correct cmake-format output, so disable
+# cmakelint's "indentation must be a multiple of N spaces" check rather than
+# fight the formatter.
+#
+# cmake-format (command_case: canonical) also preserves the officially
+# documented MixedCase spelling of module commands such as
+# FetchContent_Declare/FetchContent_MakeAvailable, which cmakelint's
+# mixed-case check otherwise flags; disable that check too.
+filter=-whitespace/indent,-readability/wonkycase

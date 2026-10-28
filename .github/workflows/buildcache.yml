@@ -64,7 +64,7 @@ jobs:
         shell: bash
         run: |
           cmake --build build --target Logging -- -t commands > build/compile-commands.txt
-          if ! grep -Ei 'buildcache(\.exe)?"? .* (-c |/c |/Fo)' build/compile-commands.txt; then
+          if ! grep -Ei 'buildcache(\.exe)?"? .* (-c |/c |/Fo)' build/compile-commands.txt; then  # codespell:ignore
             echo "::error::BuildCache is missing from the generated compiler commands"
             exit 1
           fi

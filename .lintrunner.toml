@@ -118,7 +118,7 @@ command = [
     'python3',
     '-m',
     'lint_tool.adapters.cmake_format_linter',
-    '--config=.cmake-format',
+    '--config=.cmake-format.yaml',
     '--',
     '@{{PATHSFILE}}',
 ]
@@ -681,6 +681,10 @@ include_patterns = [
 exclude_patterns = [
     'ThirdParty/**',
     '.git/**',
+    # Backend implementation headers are exactly where the real logger/SPDLOG
+    # calls and include-guard/macro names legitimately live; this check is
+    # for call sites that should go through the logger facade instead.
+    'include/backend/**',
 ]
 command = [
     'python3',

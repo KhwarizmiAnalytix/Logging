@@ -1,6 +1,6 @@
 # Phase E: Exception Framework Boundary Decision
 
-**Status:** ✅ DECISION DOCUMENTED  
+**Status:** ✅ DECISION DOCUMENTED
 **Date:** 2026-09-25
 
 ---
@@ -112,7 +112,7 @@ docs/
 void signal_handler(int sig) {
     // ❌ WRONG - Can deadlock if signal during log() or allocate during malloc()
     LOGGING_FATAL("Signal received: {}", sig);
-    
+
     // ✅ RIGHT - Use safe, async-signal-safe operations
     write(STDERR_FILENO, "Signal\n", 7);
 }
@@ -124,7 +124,7 @@ logging::logger::add_callback("handler",
     [](void*, const logging::logger::Message&) {
         // ❌ WRONG - Exception unwinds out of callback, corrupts logging state
         throw std::runtime_error("Error!");
-        
+
         // ✅ RIGHT - Catch and handle internally
         try {
             // ...

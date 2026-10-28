@@ -1,7 +1,7 @@
 # Logging Library Refactoring — Implementation Roadmap
 
-**Status:** Phase A (Directory Layout & Enums) — In Progress  
-**Date:** 2026-09-25  
+**Status:** Phase A (Directory Layout & Enums) — In Progress
+**Date:** 2026-09-25
 **Based on:** External architecture review + user approval (2026-09-25)
 
 ---
@@ -81,7 +81,7 @@ src/ (new)
   string_util.cpp
   back_trace.cpp
   env.cpp
-  
+
 src/backend/ (new)
   backend.h             (compile-time backend contract)
   native_backend.cpp
@@ -166,7 +166,7 @@ Replace fragile recursive `file(GLOB_RECURSE ...)` with explicit source lists; n
    # BEFORE: file(GLOB_RECURSE logging_headers ...)
    #         file(GLOB_RECURSE logging_sources ...)
    #         exclude Testing, ThirdParty, CMakeFiles
-   
+
    # AFTER: target_sources(Logging PRIVATE
    #            src/logger.cpp
    #            src/exception.cpp
@@ -181,7 +181,7 @@ Replace fragile recursive `file(GLOB_RECURSE ...)` with explicit source lists; n
    ```cmake
    # BEFORE: PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
    #                ${CMAKE_CURRENT_SOURCE_DIR}/include/logger
-   
+
    # AFTER:  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
    #                (no special /include/logger needed once includes are normalized)
    ```
@@ -191,7 +191,7 @@ Replace fragile recursive `file(GLOB_RECURSE ...)` with explicit source lists; n
    # BEFORE: install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include"
    #                 DESTINATION include/Logging ...)
    #                 then: #include "include/logging.h"
-   
+
    # AFTER:  install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/logging"
    #                 DESTINATION include ...)
    #                 then: #include <logging/logging.h>

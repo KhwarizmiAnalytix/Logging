@@ -1,7 +1,7 @@
-# cmake-format — line_width matches .clang-format ColumnLimit (100).
+# cmake-format — line_width matches the CMAKE (cmakelint) linter's 80-column limit.
 format:
-  line_width: 100
-  tab_size: 4
+  line_width: 80
+  tab_size: 2
   use_tabchars: false
   fractional_tab_policy: use-space
   max_subgroups_hwrap: 3
@@ -23,5 +23,5 @@ format:
   require_valid_layout: false
 
 markup:
-  first_comment_is_literal: true
-  enable_markup: false
+  first_comment_is_literal: false
+  enable_markup: true

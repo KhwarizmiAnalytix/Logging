@@ -68,10 +68,8 @@ cc_library(
     }),
     deps = [
         "@fmt//:fmt",
+        "@magic_enum//:magic_enum",
     ] + select({
-        "//bazel:disable_magic_enum": [],
-        "//conditions:default": ["@magic_enum//:magic_enum"],
-    }) + select({
         "//bazel:logging_glog": ["@glog//:glog"],
         "//bazel:logging_loguru": ["@loguru//:loguru"],
         "//bazel:logging_native": [],

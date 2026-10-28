@@ -5,25 +5,25 @@
 ## Critical Issues to Fix
 
 ### P1-1: Callback Reentrancy Deadlock
-**Problem:** User callbacks execute while backend I/O locks are held  
-**Impact:** Logging from within a callback can deadlock  
+**Problem:** User callbacks execute while backend I/O locks are held
+**Impact:** Logging from within a callback can deadlock
 **Current locations:**
 - Native: `on_flush`/`on_close` run under `g_io_mutex` (logger.cpp)
 - Spdlog: callbacks run under `dist_sink_mt`/`callback_sink_mt` locks (vendored spdlog)
 
 **Required fix:** Callbacks must execute outside all internal locks
 
-### P1-2: Callback Lifetime Data Race  
-**Problem:** Native backend can free `user_data` before `remove_callback()` completes  
-**Impact:** Use-after-free crash when callbacks are removed during concurrent logging  
-**Current issue:** Raw pointer snapshot taken, released, invoked—concurrent removal frees data first  
+### P1-2: Callback Lifetime Data Race
+**Problem:** Native backend can free `user_data` before `remove_callback()` completes
+**Impact:** Use-after-free crash when callbacks are removed during concurrent logging
+**Current issue:** Raw pointer snapshot taken, released, invoked—concurrent removal frees data first
 
 **Required fix:** Registration state must remain alive until all in-flight operations complete
 
 ### P1-3: Fatal Suppression Bug
-**Problem:** `LOGGING_LOG_FATAL` filtered out by OFF cutoff before backend dispatch  
-**Impact:** Process continues when it should terminate  
-**Current issue:** Macro filter suppresses fatal before reaching logger::log()  
+**Problem:** `LOGGING_LOG_FATAL` filtered out by OFF cutoff before backend dispatch
+**Impact:** Process continues when it should terminate
+**Current issue:** Macro filter suppresses fatal before reaching logger::log()
 
 **Required fix:** Fatal termination independent of ordinary cutoff logic
 
