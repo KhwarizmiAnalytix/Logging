@@ -62,6 +62,24 @@ class SetupCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Exact CI commands", result.stdout)
 
+    def test_help_with_cmake_overrides_still_prints_help(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                str(SCRIPTS / "setup.py"),
+                "--help",
+                "--",
+                "-DCMAKE_BUILD_TYPE=Release",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Exact CI commands", result.stdout)
+        self.assertNotIn("unrecognized option", result.stderr)
+
     def test_native_commands_preserve_arguments_and_exit_status(self):
         arguments = [
             "cmake",

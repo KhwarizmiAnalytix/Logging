@@ -295,12 +295,12 @@ def dispatch(
     exact = _dispatch_exact(arguments)
     if exact is not None:
         return exact
+    # Raw CMake arguments are only valid after `--`; keep them out of option parsing.
+    arguments, overrides = split_cmake_args(arguments)
     if arguments == ["--help"]:
         return None
     if flags_factory is None or configuration_factory is None or parse_legacy is None:
         argument_parser().error("specify an action such as config.build.test")
-    # Raw CMake arguments are only valid after `--`; keep them out of option parsing.
-    arguments, overrides = split_cmake_args(arguments)
     options, remaining = parse_options(arguments)
     tokens = parse_legacy(remaining)
     parser = argument_parser()

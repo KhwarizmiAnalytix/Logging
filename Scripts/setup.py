@@ -1121,7 +1121,7 @@ def main():
     if forwarded is not None:
         sys.exit(forwarded)
 
-    if len(sys.argv) == 2 and sys.argv[1] == "--help":
+    if setup_arguments == ["--help"]:
         cli_helper.print_help()
         print_status("Logging Build Configuration Helper", "INFO")
         print("\n" + "=" * 80)
