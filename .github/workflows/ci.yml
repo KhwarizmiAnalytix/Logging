@@ -52,16 +52,16 @@ jobs:
 
       - name: Configure
         run: >
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DLOGGING_BACKEND=${{ matrix.backend }}
-          -DLOGGING_ENABLE_BENCHMARK=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --source-dir . --build-dir build --generator Ninja
+          --build-type=${{ matrix.build_type }}
+          --backend=${{ matrix.backend }}
+          --benchmark=ON
 
       - name: Build
-        run: cmake --build build
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir build
 
   # ---------------------------------------------------------------------------
   # macOS: AppleClang, all four backends, Release.
@@ -84,16 +84,16 @@ jobs:
 
       - name: Configure
         run: >
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
-          -DLOGGING_BACKEND=${{ matrix.backend }}
-          -DLOGGING_ENABLE_BENCHMARK=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --source-dir . --build-dir build --generator Ninja
+          --build-type=Release
+          --backend=${{ matrix.backend }}
+          --benchmark=ON
 
       - name: Build
-        run: cmake --build build
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir build
 
   # ---------------------------------------------------------------------------
   # Windows: MSVC, all four backends, Release.
@@ -113,15 +113,15 @@ jobs:
 
       - name: Configure
         run: >
-          cmake -S . -B build
-          -DLOGGING_BACKEND=${{ matrix.backend }}
-          -DLOGGING_ENABLE_BENCHMARK=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build
+          --backend=${{ matrix.backend }}
+          --benchmark=ON
 
       - name: Build
-        run: cmake --build build --config Release
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build --build-type Release
 
       - name: Test
-        run: ctest --test-dir build --build-config Release --output-on-failure
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir build --build-type Release
 
   # ---------------------------------------------------------------------------
   # Compiler cache & Icecc: exercise LOGGING_ENABLE_CACHE/LOGGING_CACHE_BACKEND
@@ -191,18 +191,18 @@ jobs:
       - name: Configure
         shell: bash
         run: >
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
-          -DLOGGING_BACKEND=NATIVE
-          -DLOGGING_ENABLE_BENCHMARK=OFF
-          ${{ matrix.backend && format('-DLOGGING_ENABLE_CACHE=ON -DLOGGING_CACHE_BACKEND={0}', matrix.backend) || '' }}
-          ${{ matrix.icecc && '-DLOGGING_ENABLE_ICECC=ON' || '' }}
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --source-dir . --build-dir build --generator Ninja
+          --build-type=Release
+          --backend=NATIVE
+          --benchmark=OFF
+          ${{ matrix.backend && format('--cache=ON --cache-backend={0}', matrix.backend) || '' }}
+          ${{ matrix.icecc && '--icecc=ON' || '' }}
 
       - name: Build
-        run: cmake --build build
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir build
 
   # ---------------------------------------------------------------------------
   # Bazel: builds/tests the whole tree (default LOGURU backend), cross-platform.
@@ -231,10 +231,10 @@ jobs:
             bazel-${{ runner.os }}-
 
       - name: Build
-        run: bazel build //...
+        run: python3 "${{ github.workspace }}/Scripts/setup_bazel.py" build --compiler=default --compilation-mode=fastbuild --target=//...
 
       - name: Test
-        run: bazel test //... --test_output=errors
+        run: python3 "${{ github.workspace }}/Scripts/setup_bazel.py" test --compiler=default --compilation-mode=fastbuild --target=//... --test-output=errors
 
   # ---------------------------------------------------------------------------
   # Sanitizers: Clang ASan and UBSan, default backend, Debug.
@@ -269,22 +269,22 @@ jobs:
 
       - name: Configure
         run: >
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=Debug
-          -DLOGGING_BACKEND=LOGURU
-          -DLOGGING_ENABLE_BENCHMARK=OFF
-          -DLOGGING_ENABLE_SANITIZER=ON
-          -DLOGGING_SANITIZER_TYPE=${{ matrix.sanitizer }}
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --source-dir . --build-dir build --generator Ninja
+          --build-type=Debug
+          --backend=LOGURU
+          --benchmark=OFF
+          --sanitizer=ON
+          --sanitizer-types=${{ matrix.sanitizer }}
 
       - name: Build
-        run: cmake --build build
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build
 
       - name: Test
         env:
           ASAN_OPTIONS: halt_on_error=1:abort_on_error=1
           LSAN_OPTIONS: suppressions=${{ github.workspace }}/Scripts/suppressions/lsan_suppressions.txt
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
-        run: ctest --test-dir build --output-on-failure
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir build
 
   # ---------------------------------------------------------------------------
   # Coverage: gcc/gcov+lcov (Linux), Homebrew LLVM/clang (macOS), MSVC/OpenCppCoverage
@@ -318,7 +318,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           brew install ninja llvm
-          LLVM_PREFIX="$(brew --prefix llvm)"
+          LLVM_PREFIX="$(brew --install-prefix llvm)"
           echo "${LLVM_PREFIX}/bin" >> "$GITHUB_PATH"
           echo "CC=${LLVM_PREFIX}/bin/clang" >> "$GITHUB_ENV"
           echo "CXX=${LLVM_PREFIX}/bin/clang++" >> "$GITHUB_ENV"
@@ -337,35 +337,35 @@ jobs:
       - name: Configure (Linux/macOS)
         if: matrix.os != 'windows-latest'
         run: >
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=Debug
-          -DLOGGING_BACKEND=LOGURU
-          -DLOGGING_ENABLE_BENCHMARK=OFF
-          -DLOGGING_ENABLE_COVERAGE=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --source-dir . --build-dir build --generator Ninja
+          --build-type=Debug
+          --backend=LOGURU
+          --benchmark=OFF
+          --coverage=ON
 
       - name: Configure (Windows)
         if: matrix.os == 'windows-latest'
         run: >
-          cmake -S . -B build
-          -DLOGGING_BACKEND=LOGURU
-          -DLOGGING_ENABLE_BENCHMARK=OFF
-          -DLOGGING_ENABLE_COVERAGE=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build
+          --backend=LOGURU
+          --benchmark=OFF
+          --coverage=ON
 
       - name: Build (Linux/macOS)
         if: matrix.os != 'windows-latest'
-        run: cmake --build build
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build
 
       - name: Build (Windows)
         if: matrix.os == 'windows-latest'
-        run: cmake --build build --config Release
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build --build-type Release
 
       - name: Test (Linux/macOS)
         if: matrix.os != 'windows-latest'
-        run: ctest --test-dir build --output-on-failure
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir build
 
       - name: Test (Windows)
         if: matrix.os == 'windows-latest'
-        run: ctest --test-dir build --build-config Release --output-on-failure
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir build --build-type Release
 
       - name: Collect coverage
         run: >
@@ -414,30 +414,30 @@ jobs:
 
       - name: Configure Logging
         run: >
-          cmake -S . -B build_logging -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
-          -DLOGGING_BACKEND=NATIVE
-          -DLOGGING_ENABLE_TESTING=OFF
-          -DLOGGING_ENABLE_BENCHMARK=OFF
-          -DCMAKE_INSTALL_PREFIX=/tmp/logging_install
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --source-dir . --build-dir build_logging --generator Ninja
+          --build-type=Release
+          --backend=NATIVE
+          --testing=OFF
+          --benchmark=OFF
+          --install-prefix=/tmp/logging_install
 
       - name: Build Logging
-        run: cmake --build build_logging
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build_logging
 
       - name: Install Logging
-        run: cmake --install build_logging
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" install --build-dir build_logging
 
       - name: Configure Example (find_package test)
         run: >
-          cmake -S Examples/FindPackageExample -B build_example
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_PREFIX_PATH=/tmp/logging_install
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir Examples/FindPackageExample --build-dir build_example
+          --build-type=Release
+          --prefix-path=/tmp/logging_install
 
       - name: Build Example
-        run: cmake --build build_example
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build_example
 
       - name: Test Example
-        run: ctest --test-dir build_example --output-on-failure
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir build_example
 
       - name: Verify Installed Headers
         run: |
