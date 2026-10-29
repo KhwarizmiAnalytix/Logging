@@ -107,6 +107,62 @@ class SetupCliTests(unittest.TestCase):
         self.assertEqual(cli.apply_cmake_args(flags, overrides, "Debug"), "Release")
         self.assertEqual(flags[-3:], overrides)
 
+    def test_raw_cmake_arguments_after_separator_are_configured(self):
+        overrides = [
+            "-DCMAKE_PREFIX_PATH=C:/SDK Folder;D:/Other",
+            "-DREPRODUCIBLE_OPTION=OFF",
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(
+                cli.subprocess, "run", return_value=Mock(returncode=0)
+            ) as run:
+                code = cli.dispatch(
+                    ["config", "--build-dir", directory, "--", *overrides],
+                    ROOT,
+                    lambda tokens: Flags(setup.parse_args(list(tokens))),
+                    lambda tokens: None,
+                    setup.parse_args,
+                )
+        self.assertEqual(code, 0)
+        command = run.call_args.args[0]
+        self.assertEqual(command[-len(overrides) :], overrides)
+        with (
+            self.assertRaises(SystemExit) as error,
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
+            cli.parse_options(["config", *overrides])
+        self.assertEqual(error.exception.code, 2)
+
+    def test_legacy_config_build_applies_raw_cmake_arguments(self):
+        overrides = [
+            "-DCMAKE_PREFIX_PATH=C:/SDK Folder;D:/Other",
+            "-DREPRODUCIBLE_OPTION=OFF",
+        ]
+        original = Path.cwd()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "project"
+            (root / "Scripts").mkdir(parents=True)
+            try:
+                with (
+                    patch.object(setup, "__file__", str(root / "Scripts/setup.py")),
+                    patch.object(setup, "check_dependencies", return_value=[]),
+                    patch.object(setup, "ErrorLogger"),
+                    patch.object(
+                        setup.config_helper, "configure_build", return_value=0
+                    ) as configure,
+                    patch.object(setup.build_helper, "build_project", return_value=0),
+                    patch.object(
+                        sys,
+                        "argv",
+                        ["setup.py", "config.build", "--", *overrides],
+                    ),
+                ):
+                    setup.main()
+            finally:
+                os.chdir(original)
+        flags = configure.call_args.args[5]
+        self.assertEqual(flags[-len(overrides) :], overrides)
+
     def test_configure_applies_raw_overrides_after_defaults(self):
         config = self.configuration("config")
         config.extra_cmake_args = [

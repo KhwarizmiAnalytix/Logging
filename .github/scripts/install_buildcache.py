@@ -9,7 +9,13 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--prefix", type=Path, required=True)
+    parser.add_argument(
+        "--install-prefix",
+        "--prefix",
+        dest="prefix",
+        type=Path,
+        required=True,
+    )
     args = parser.parse_args()
     prefix = args.prefix.resolve()
     source, build = prefix / "source", prefix / "build"
