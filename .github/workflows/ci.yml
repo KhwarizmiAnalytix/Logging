@@ -125,9 +125,9 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Compiler cache & Icecc: exercise LOGGING_ENABLE_CACHE/LOGGING_CACHE_BACKEND
-  # (ccache, sccache) and LOGGING_ENABLE_ICECC across Linux/macOS/Windows.
-  # BuildCache runs in buildcache.yml. Icecc has no Windows port, so it is
-  # exercised on Linux/macOS only.
+  # (ccache, sccache, buildcache) and LOGGING_ENABLE_ICECC across
+  # Linux/macOS/Windows.  Icecc has no Windows port, so it is exercised on
+  # Linux/macOS only.
   # ---------------------------------------------------------------------------
   cache-icecc:
     name: Cache & Icecc / ${{ matrix.name }}
@@ -143,6 +143,9 @@ jobs:
           - name: linux-sccache
             os: ubuntu-latest
             backend: sccache
+          - name: linux-buildcache
+            os: ubuntu-latest
+            backend: buildcache
           - name: linux-icecc
             os: ubuntu-latest
             icecc: true
@@ -152,6 +155,9 @@ jobs:
           - name: macos-sccache
             os: macos-latest
             backend: sccache
+          - name: macos-buildcache
+            os: macos-latest
+            backend: buildcache
           - name: macos-icecc
             os: macos-latest
             icecc: true
@@ -161,6 +167,9 @@ jobs:
           - name: windows-sccache
             os: windows-latest
             backend: sccache
+          - name: windows-buildcache
+            os: windows-latest
+            backend: buildcache
     steps:
       - uses: actions/checkout@v4
         with:
@@ -187,6 +196,16 @@ jobs:
         if: matrix.backend == 'sccache'
         with:
           version: v0.12.0
+
+      - name: Set BuildCache directory
+        if: matrix.backend == 'buildcache'
+        shell: bash
+        run: echo "BUILDCACHE_DIR=$RUNNER_TEMP/buildcache-data" >> "$GITHUB_ENV"
+
+      - name: Install BuildCache
+        if: matrix.backend == 'buildcache'
+        shell: bash
+        run: python3 .github/scripts/install_buildcache.py --install-prefix "$RUNNER_TEMP/buildcache-tool"
 
       - name: Configure
         shell: bash
