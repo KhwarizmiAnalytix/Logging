@@ -3,5 +3,4 @@ exports_files([
     "fmt.BUILD",
     "loguru.BUILD",
     "spdlog.BUILD",
-    "magic_enum.BUILD",
 ])
