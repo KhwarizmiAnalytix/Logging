@@ -192,7 +192,7 @@ jobs:
         if: runner.os == 'Windows' && matrix.backend == 'ccache'
         run: choco install -y ccache
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: mozilla-actions/sccache-action@v0.0.11
         if: matrix.backend == 'sccache'
         with:
           version: v0.12.0
