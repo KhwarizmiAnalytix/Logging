@@ -126,15 +126,39 @@ bazel build //:Logging --define=logging_backend=native
 bazel test //... --define=logging_backend=native --test_output=errors
 ```
 
-The glog Bazel dependency has a known gflags integration gap; CMake configures
-glog with `WITH_GFLAGS=OFF`. Consult [CONTRIBUTING.md](CONTRIBUTING.md) for the
-setup helpers and local checks.
+Bazel uses the registry glog 0.7.1 package with gflags; CMake uses the vendored
+glog configuration with `WITH_GFLAGS=OFF`. All four Bazel backends are covered
+by CI. Initialize submodules with `git submodule update --init --recursive`.
+
+`MODULE.bazel.lock` belongs in version control. Normal commands use strict lock
+checking; after changing dependencies or the vendor extension, refresh it with
+`bazel query 'deps(//:Logging)' --lockfile_mode=update`. The extension records
+labels and resolves submodule paths at fetch time, so the lockfile can move
+between checkouts.
+
+Build an installation with `bazel build //:logging_pkg_tar`, or stage it with
+`bazel run //:install -- --destdir=/some/prefix`. Packages include magic_enum
+headers, the selected library, and any static backend dependencies. A relocated
+installation supports `find_package(Logging CONFIG REQUIRED)` and the
+`Logging::Logging` target. `--define=build_shared_libs=true` produces a shared
+library and makes the Bazel `//:Logging` target link consumers to that library.
+Select C++17 or C++23 with `--define=logging_cxx_standard=17` or `23`.
+
+Verify a tarball independently of the source tree:
+
+```sh
+python Testing/Bazel/verify_integration.py --package bazel-bin/logging_pkg_tar.tar
+```
+
+Consult [CONTRIBUTING.md](CONTRIBUTING.md) for local checks.
 
 ## Design and validation
 
 The current [CI workflow](.github/workflows/ci.yml) configures CMake tests for
-all four backends on Linux, macOS, and Windows. Bazel jobs use the default
-backend. ASan/UBSan jobs use Loguru; this is not full concurrency coverage.
+all four backends on Linux, macOS, and Windows. Bazel jobs also exercise all
+four backends with static and shared linkage, relocated installed consumers,
+and Linux/macOS Clang coverage. ASan/UBSan jobs use Loguru; this is not full
+concurrency coverage.
 
 - [Logging design](docs/logging_design.md) — architecture, contracts, and compatibility
 - [Detailed implementation phases](docs/logging_design.md#implementation-phases)
@@ -165,4 +189,20 @@ Bazel CI uses the same action style and the options listed by
 
 ```sh
 python Scripts/setup_bazel.py build.test --target //Testing/... --compiler default --test-output errors
+python Scripts/setup_bazel.py build.test.glog.shared --cxx-standard 23
+python Scripts/setup_bazel.py coverage --compiler clang --target //Testing/Cxx:LoggingCxxTests
 ```
+
+The Bazel helper has one parser for named options and dotted shortcuts. Defaults
+are debug mode, the environment's compiler/toolchain, Loguru, static linkage,
+and C++20; adding `--target` preserves these defaults. Named options override
+dotted settings. `config` analyzes the selected targets without compiling or
+cleaning. `clean` uses a normal workspace-scoped Bazel clean. `--output-root`
+places Bazel state and convenience links under the selected directory.
+
+Coverage uses fresh test results, instruments project targets, and validates
+that the LCOV report has source and line records. Clang collection uses matching
+`llvm-profdata`/`llvm-cov` tools; GCC uses Bazel's combined LCOV report. Collection
+is supported on Linux/macOS and fails if no usable data is produced. With
+`--output-root DIR`, Clang writes `DIR/links/out/_coverage/logging.lcov`;
+`genhtml`, when installed, additionally produces HTML.

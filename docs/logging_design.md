@@ -930,7 +930,9 @@ Preserve these distinctions in coverage reports.
 
 The [CI workflow](../.github/workflows/ci.yml) configures CMake for all four
 backends on Linux, macOS, and Windows. Linux includes Loguru Debug canaries.
-The Bazel job uses the default backend, not a backend matrix. ASan/UBSan jobs
+The Bazel jobs cover all four backends with static/shared linkage and a relocated
+installed-package consumer on Linux, macOS, and Windows. Separate Clang coverage
+jobs validate nonempty LCOV output on Linux and macOS. ASan/UBSan jobs
 use Loguru; there is currently no TSan job in that workflow. Configuration in
 a workflow is not evidence that a particular run passed.
 

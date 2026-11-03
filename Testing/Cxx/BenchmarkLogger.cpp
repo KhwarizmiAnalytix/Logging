@@ -51,7 +51,7 @@ void discard_callback(void* /*user_data*/, const logging::logger::Message& /*mes
 
 std::string file_path_for_thread(std::int64_t thread_index)
 {
-    const auto dir = std::filesystem::temp_directory_path() / "xsigma_logging_bench";
+    const auto dir = std::filesystem::temp_directory_path() / "logging_bench";
     std::filesystem::create_directories(dir);
     return (dir /
             ("bench_" + std::string(backend_name()) + "_" + std::to_string(thread_index) + ".log"))

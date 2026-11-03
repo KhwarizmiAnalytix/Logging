@@ -393,7 +393,7 @@ class SetupCliTests(unittest.TestCase):
 
     def test_exact_bazel_commands_preserve_target_filters_and_failures(self):
         with (
-            patch.object(cli.shutil, "which", return_value="bazel"),
+            patch("helpers.bazel.shutil.which", return_value="bazel"),
             patch.object(cli.subprocess, "run", return_value=Mock(returncode=0)) as run,
         ):
             self.assertEqual(
@@ -406,7 +406,7 @@ class SetupCliTests(unittest.TestCase):
             ["bazel", "test", "//Testing/...", "--test_output=errors"], check=True
         )
         with (
-            patch.object(cli.shutil, "which", return_value="bazel"),
+            patch("helpers.bazel.shutil.which", return_value="bazel"),
             patch.object(
                 cli.subprocess,
                 "run",

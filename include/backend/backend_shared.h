@@ -76,7 +76,7 @@ inline void ensure_windows_console()
         {
             return;
         }
-        SetConsoleTitleW(L"XSigma logging");
+        SetConsoleTitleW(L"Logging");
     }
     FILE* stream = nullptr;
     (void)freopen_s(&stream, "CONOUT$", "w", stdout);

@@ -9,9 +9,34 @@
 package(default_visibility = ["//visibility:public"])
 
 exports_files([
-    "xsigma.bzl",
+    "fmt.BUILD",
+    "loguru.BUILD",
+    "spdlog.BUILD",
     "logging.bzl",
+    "distribution.bzl",
 ])
+
+config_setting(
+    name = "cxx17",
+    define_values = {"logging_cxx_standard": "17"},
+)
+
+config_setting(
+    name = "cxx23",
+    define_values = {"logging_cxx_standard": "23"},
+)
+
+config_setting(
+    name = "cxx17_windows",
+    constraint_values = ["@platforms//os:windows"],
+    define_values = {"logging_cxx_standard": "17"},
+)
+
+config_setting(
+    name = "cxx23_windows",
+    constraint_values = ["@platforms//os:windows"],
+    define_values = {"logging_cxx_standard": "23"},
+)
 
 # =============================================================================
 # Library Type Configuration

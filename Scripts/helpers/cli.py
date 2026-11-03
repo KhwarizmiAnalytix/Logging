@@ -5,7 +5,6 @@ import contextlib
 import io
 import os
 import re
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -44,21 +43,9 @@ def argument_parser(bazel: bool = False) -> argparse.ArgumentParser:
     parser.add_argument("--compiler", choices=COMPILERS, help="Compiler selection; default respects the build system/environment")
     parser.add_argument("--target", action="append", default=[], help="Build/test target; repeat for multiple targets")
     if bazel:
-        parser.add_argument("--compilation-mode", choices=("fastbuild", "dbg", "opt"), help="Bazel compilation mode")
-        parser.add_argument("--test-output", choices=("errors", "all", "summary", "streamed"), default="errors", help="Test output policy")
-        parser.add_argument("--batch", action="store_true", help="Run Bazel without a persistent server")
-        parser.add_argument("--output-root", help="Directory for Bazel's output/cache state")
-        parser.add_argument("--cxx-standard", choices=("17", "20", "23"), help="C++ language standard")
-        project = Path(__file__).resolve().parents[2].name
-        if project in ("Vectorization",):
-            parser.add_argument("--cpu-backend", choices=("no", "sse", "avx", "avx2", "avx512", "neon", "sve"), help="CPU SIMD backend")
-        if project in ("Vectorization", "Memory"):
-            parser.add_argument("--gpu-backend", choices=("none", "cuda", "hip", "metal"), help="GPU backend")
-        if project == "Logging":
-            parser.add_argument("--backend", choices=("native", "loguru", "glog", "spdlog"), type=str.lower, help="Logging backend")
-        if project == "Parallel":
-            parser.add_argument("--backend", choices=("sequential", "stdthread", "openmp", "tbb"), help="Parallel backend")
-        return parser
+        from .bazel import argument_parser as bazel_parser
+
+        return bazel_parser()
     parser.add_argument("--source-dir", help="Project or installed-package consumer source directory")
     parser.add_argument("--build-dir", help="Build directory; relative paths use the invoking directory")
     parser.add_argument("--build-type", type=canonical_build_type, choices=("Debug", "Release", "RelWithDebInfo", "MinSizeRel"), help="Build and test configuration")
@@ -408,67 +395,7 @@ def dispatch(
 
 
 def dispatch_bazel(arguments, root=None, force=False) -> Optional[int]:
-    """Run the documented Bazel actions without accepting raw Bazel arguments."""
-    if arguments == ["--help"]:
-        print_bazel_help()
-        return 0 if force else None
-    if arguments[:1] == ["--"]:
-        executable = shutil.which("bazelisk") or shutil.which("bazel")
-        if not executable:
-            print("Install bazelisk or bazel")
-            return 1
-        return _run_status([executable, *arguments[1:]])
-    options, remaining = parse_options(arguments, bazel=True)
-    if not force and len(arguments) == len(remaining):
-        return None
-    tokens = set(".".join(remaining).lower().split("."))
-    allowed = {"config", "build", "test", "clean", "coverage", "debug", "release", "clang", "gcc", "clang-cl", "msvc", "batch"}
-    if not tokens or not tokens <= allowed:
-        argument_parser(True).error("use config.build.test[.debug|.release] and documented named options")
-    executable = shutil.which("bazelisk") or shutil.which("bazel")
-    if not executable:
-        print("Install bazelisk or bazel")
-        return 1
-    root = Path(root or Path(__file__).resolve().parents[2]).resolve()
-    prefix = [executable]
-    if executable.lower().endswith((".cmd", ".bat")):
-        prefix = ["cmd.exe", "/c", *prefix]
-    if options.batch or "batch" in tokens:
-        prefix.append("--batch")
-    if options.output_root:
-        prefix.append("--output_user_root=" + str(Path(options.output_root).resolve()))
-    settings = []
-    mode = options.compilation_mode or ("dbg" if "debug" in tokens else "opt" if "release" in tokens else None)
-    if mode:
-        settings.extend(["-c", mode])
-    compiler = options.compiler or next((token for token in tokens if token in COMPILERS), "default")
-    if compiler != "default":
-        cc, cxx = {"clang": ("clang", "clang++"), "gcc": ("gcc", "g++"), "clang-cl": ("clang-cl", "clang-cl"), "msvc": ("cl", "cl")}[compiler]
-        settings.extend(["--repo_env=CC=" + cc, "--repo_env=CXX=" + cxx])
-    if options.cxx_standard:
-        standard = ("/std:c++" if os.name == "nt" else "-std=c++") + options.cxx_standard
-        settings.extend(["--cxxopt=" + standard, "--host_cxxopt=" + standard])
-    for name in ("cpu_backend", "gpu_backend", "backend"):
-        value = getattr(options, name, None)
-        if value is not None:
-            project = {"Vectorization": "vectorization", "Memory": "memory", "Logging": "logging", "Parallel": "parallel"}[root.name]
-            setting = project + ("_backend" if name == "backend" else "_" + name)
-            settings.append(f"--define={setting}={value}")
-            if root.name == "Vectorization" and name == "gpu_backend":
-                settings.append("--define=memory_gpu_backend=" + value)
-    targets = options.target or ["//..."]
-    try:
-        if "clean" in tokens:
-            _run(prefix + ["clean"], cwd=root)
-        if tokens == {"config"}:
-            _run(prefix + ["build", *settings, "--nobuild", "--", *targets], cwd=root)
-        for action in ("build", "test", "coverage"):
-            if action in tokens:
-                output = ["--test_output=" + options.test_output] if action != "build" else []
-                _run(prefix + [action, *settings, *output, "--", *targets], cwd=root)
-        return 0
-    except subprocess.CalledProcessError as error:
-        return error.returncode
-    except OSError as error:
-        print(error)
-        return 1
+    """Compatibility entry point; all Bazel syntax uses the same dispatcher."""
+    from .bazel import dispatch
+
+    return dispatch(arguments, root)

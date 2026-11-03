@@ -1,40 +1,44 @@
-"Module extension for vendored deps without MODULE.bazel (fmt, loguru, spdlog, googletest, benchmark)."
+"""Expose submodules without recording checkout-specific paths in the lockfile."""
 
-load("@bazel_tools//tools/build_defs/repo:local.bzl", "local_repository", "new_local_repository")
+def _vendored_repository_impl(ctx):
+    # Resolve labels at fetch time, after the extension lock has been replayed.
+    root = ctx.path(ctx.attr.root_marker).dirname.dirname
+    source = root.get_child("ThirdParty").get_child(ctx.attr.directory)
+    if not source.is_dir:
+        fail("Missing ThirdParty/%s; run git submodule update --init --recursive" % ctx.attr.directory)
+    for child in source.readdir():
+        if ctx.attr.build_file and child.basename in ["BUILD", "BUILD.bazel"]:
+            continue
+        ctx.symlink(child, child.basename)
+        if ctx.os.name.startswith("windows") and not child.is_dir:
+            ctx.watch(child)
+    if ctx.attr.build_file:
+        ctx.symlink(ctx.attr.build_file, "BUILD.bazel")
+    ctx.file("REPO.bazel", "")
 
-def _vendor_deps_impl(mctx):
-    # Derive the module root (ThirdParty/Logging/) from a known exported file.
-    fmt_build = mctx.path(Label("//ThirdParty:fmt.BUILD"))
-    module_root = fmt_build.dirname.dirname
-    loguru_build = mctx.path(Label("//ThirdParty:loguru.BUILD"))
-    spdlog_build = mctx.path(Label("//ThirdParty:spdlog.BUILD"))
-
-    new_local_repository(
-        name = "fmt",
-        path = str(module_root) + "/ThirdParty/fmt",
-        build_file_content = mctx.read(fmt_build),
-    )
-    new_local_repository(
-        name = "loguru",
-        path = str(module_root) + "/ThirdParty/loguru",
-        build_file_content = mctx.read(loguru_build),
-    )
-    new_local_repository(
-        name = "spdlog",
-        path = str(module_root) + "/ThirdParty/spdlog",
-        build_file_content = mctx.read(spdlog_build),
-    )
-
-    # googletest and benchmark ship their own BUILD.bazel.
-    local_repository(
-        name = "com_google_googletest",
-        path = str(module_root) + "/ThirdParty/googletest",
-    )
-    local_repository(
-        name = "com_google_benchmark",
-        path = str(module_root) + "/ThirdParty/benchmark",
-    )
-
-vendor_deps = module_extension(
-    implementation = _vendor_deps_impl,
+_vendored_repository = repository_rule(
+    implementation = _vendored_repository_impl,
+    attrs = {
+        "root_marker": attr.label(mandatory = True),
+        "directory": attr.string(mandatory = True),
+        "build_file": attr.label(),
+    },
+    local = True,
 )
+
+def _vendor_deps_impl(_mctx):
+    for name, directory, build_file in [
+        ("fmt", "fmt", Label("//bazel:fmt.BUILD")),
+        ("loguru", "loguru", Label("//bazel:loguru.BUILD")),
+        ("spdlog", "spdlog", Label("//bazel:spdlog.BUILD")),
+        ("com_google_googletest", "googletest", None),
+        ("com_google_benchmark", "benchmark", None),
+    ]:
+        _vendored_repository(
+            name = name,
+            root_marker = Label("//bazel:logging.bzl"),
+            directory = directory,
+            build_file = build_file,
+        )
+
+vendor_deps = module_extension(implementation = _vendor_deps_impl)

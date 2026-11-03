@@ -3,7 +3,7 @@
 
 /**
  * @file string_util.h
- * @brief Comprehensive string utility functions for the XSigma Core library
+ * @brief Comprehensive string utility functions for the Logging library
  *
  * This header provides a collection of high-performance string manipulation,
  * conversion, and utility functions designed for financial computing applications.

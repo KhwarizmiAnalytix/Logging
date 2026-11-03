@@ -20,8 +20,8 @@ using logging::utils::set_env;
 
 namespace
 {
-constexpr const char* kFlag = "XSIGMA_LOGGING_TEST_FLAG";
-constexpr const char* kInt  = "XSIGMA_LOGGING_TEST_INT64";
+constexpr const char* kFlag = "LOGGING_TEST_FLAG";
+constexpr const char* kInt  = "LOGGING_TEST_INT64";
 
 class env_var_guard
 {

@@ -3,7 +3,7 @@
  * @brief Implementation of high-performance string utility functions
  *
  * This file contains optimized implementations of string manipulation,
- * conversion, and utility functions for the XSigma Core library.
+ * conversion, and utility functions for the Logging library.
  *
  * Key design principles:
  * - Performance-first approach for financial computing applications

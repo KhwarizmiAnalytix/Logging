@@ -42,7 +42,8 @@ CI runs the same steps (`.github/workflows/ci.yml`, `coverage` job) and uploads 
 ## CI
 
 Every PR runs: CMake build+test on Linux (gcc/clang × all backends), macOS, and Windows;
-a Bazel build+test; Clang ASan/UBSan; the coverage job above; and lintrunner
+Bazel build+test and installed-package checks for every backend with static/shared
+linkage; Linux/macOS Bazel Clang coverage; Clang ASan/UBSan; the coverage job above; and lintrunner
 (`.github/workflows/lint.yml`: CLANGFORMAT, CMAKE, CMAKEFORMAT, EDITORCONFIG,
 NEWLINE, CODESPELL on files changed against `main`). See
 `.github/workflows/ci.yml`.

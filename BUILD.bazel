@@ -1,9 +1,11 @@
+load("@rules_cc//cc:cc_shared_library.bzl", "cc_shared_library")
+
 # Standalone logging library. Include root is the repository root; public headers live
 # under include/ (e.g. #include "include/logging.h", "include/logger/logger.h").
 load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@rules_pkg//pkg:install.bzl", "pkg_install")
-load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
 load("@rules_pkg//pkg:pkg.bzl", "pkg_tar")
+load("//bazel:distribution.bzl", "logging_distribution", "shared_consumer")
 load("//bazel:logging.bzl", "logging_copts", "logging_defines", "logging_linkopts")
 
 package(default_visibility = ["//visibility:public"])
@@ -46,10 +48,6 @@ cc_library(
         "//bazel:shared_libs": ["LOGGING_SHARED_DEFINE"],
         "//conditions:default": ["LOGGING_STATIC_DEFINE"],
     }),
-    local_defines = select({
-        "//bazel:shared_libs": ["LOGGING_BUILDING_DLL"],
-        "//conditions:default": [],
-    }),
     # No "." in includes: the package is the workspace root, so Bazel's default
     # -iquote <workspace_root> already resolves "include/common/..." and "include/util/..."
     # headers (includes = ["."] is rejected at the workspace root by Bazel 8+).
@@ -62,30 +60,53 @@ cc_library(
         "@platforms//os:windows": ["dbghelp.lib"],
         "//conditions:default": [],
     }),
-    linkstatic = select({
-        "//bazel:shared_libs": False,
-        "//conditions:default": True,
+    # Shared output is produced explicitly by logging_shared below.
+    linkstatic = True,
+    local_defines = select({
+        "//bazel:shared_libs": ["LOGGING_BUILDING_DLL"],
+        "//conditions:default": [],
     }),
-    deps = [
-        "@fmt//:fmt",
-        "@magic_enum//:magic_enum",
-    ] + select({
-        "//bazel:logging_glog": ["@glog//:glog"],
-        "//bazel:logging_loguru": ["@loguru//:loguru"],
-        "//bazel:logging_native": [],
-        "//bazel:logging_spdlog": ["@spdlog//:spdlog"],
-        "//conditions:default": ["@loguru//:loguru"],
-    }),
-    alwayslink = False,
     visibility = [
         "//visibility:public",
     ],
+    deps = [
+        "@fmt",
+        "@magic_enum",
+    ] + select({
+        "//bazel:logging_glog": ["@glog"],
+        "//bazel:logging_loguru": ["@loguru"],
+        "//bazel:logging_native": [],
+        "//bazel:logging_spdlog": ["@spdlog"],
+        "//conditions:default": ["@loguru"],
+    }),
+    alwayslink = False,
 )
 
-cc_library(
+alias(
     name = "Logging",
-    deps = [":logging_lib"],
+    actual = select({
+        "//bazel:shared_libs": ":logging_dynamic",
+        "//conditions:default": ":logging_lib",
+    }),
     visibility = ["//visibility:public"],
+)
+
+cc_shared_library(
+    name = "logging_shared",
+    shared_lib_name = select({
+        "@platforms//os:windows": "Logging.dll",
+        "@platforms//os:macos": "libLogging.dylib",
+        "//conditions:default": "libLogging.so",
+    }),
+    tags = ["manual"],
+    deps = [":logging_lib"],
+)
+
+shared_consumer(
+    name = "logging_dynamic",
+    library = ":logging_lib",
+    shared = ":logging_shared",
+    tags = ["manual"],
 )
 
 # =============================================================================
@@ -99,40 +120,62 @@ cc_library(
 # //:install -- --destdir=/some/prefix` stages the same tree directly on disk.
 # =============================================================================
 
-pkg_files(
-    name = "logging_installed_hdrs",
-    srcs = glob(
-        [
-            "include/*.h",
-            "include/common/*.h",
-            "include/util/*.h",
-            "include/logger/*.h",
-            "include/backend/*.h",
-        ],
-        allow_empty = True,
-    ),
-    prefix = "include",
-    strip_prefix = strip_prefix.from_pkg("include"),
-)
-
-pkg_files(
-    name = "logging_installed_libs",
-    srcs = [":logging_lib"],
-    prefix = "lib",
+logging_distribution(
+    name = "logging_distribution",
+    headers = [":logging_hdrs"],
+    library = select({
+        "//bazel:shared_libs": ":logging_shared",
+        "//conditions:default": ":logging_lib",
+    }),
+    license = "LICENSE",
+    macos = select({
+        "@platforms//os:macos": True,
+        "//conditions:default": False,
+    }),
+    magic_enum = "@magic_enum//:magic_enum",
+    magic_enum_license = "@magic_enum//:LICENSE",
+    shared = select({
+        "//bazel:shared_libs": True,
+        "//conditions:default": False,
+    }),
+    standard = select({
+        "//bazel:cxx17": "17",
+        "//bazel:cxx23": "23",
+        "//conditions:default": "20",
+    }),
+    third_party_licenses = select({
+        "//bazel:logging_glog": {
+            "@fmt//:LICENSE": "fmt.LICENSE",
+            "@glog//:COPYING": "glog.LICENSE",
+            "@gflags//:COPYING.txt": "gflags.LICENSE",
+        },
+        "//bazel:logging_native": {"@fmt//:LICENSE": "fmt.LICENSE"},
+        "//bazel:logging_spdlog": {
+            "@fmt//:LICENSE": "fmt.LICENSE",
+            "@spdlog//:LICENSE": "spdlog.LICENSE",
+        },
+        "//conditions:default": {
+            "@fmt//:LICENSE": "fmt.LICENSE",
+            "@loguru//:LICENSE": "loguru.LICENSE",
+        },
+    }),
+    windows = select({
+        "@platforms//os:windows": True,
+        "//conditions:default": False,
+    }),
+    implementation = ":logging_lib",
 )
 
 pkg_tar(
     name = "logging_pkg_tar",
     srcs = [
-        ":logging_installed_hdrs",
-        ":logging_installed_libs",
+        ":logging_distribution",
     ],
 )
 
 pkg_install(
     name = "install",
     srcs = [
-        ":logging_installed_hdrs",
-        ":logging_installed_libs",
+        ":logging_distribution",
     ],
 )

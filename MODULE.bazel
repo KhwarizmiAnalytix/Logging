@@ -1,5 +1,5 @@
 module(
-    name = "xsigma_logging",
+    name = "logging",
     version = "1.0.0",
 )
 
@@ -17,4 +17,4 @@ bazel_dep(name = "gflags", version = "2.2.2")
 # MODULE.bazel (or consumed pinned to the ThirdParty/ submodule commit rather
 # than a registry release) — created via extension.
 vendor = use_extension("//bazel:vendor_deps.bzl", "vendor_deps")
-use_repo(vendor, "fmt", "loguru", "spdlog", "com_google_googletest", "com_google_benchmark")
+use_repo(vendor, "com_google_benchmark", "com_google_googletest", "fmt", "loguru", "spdlog")

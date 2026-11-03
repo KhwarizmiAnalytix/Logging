@@ -5,6 +5,8 @@
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
+exports_files(["LICENSE"])
+
 cc_library(
     name = "loguru",
     srcs = ["loguru.cpp"],
@@ -32,9 +34,11 @@ cc_library(
     linkopts = select({
         "@platforms//os:windows": [],
         "@platforms//os:macos": ["-lpthread"],
-        "//conditions:default": ["-lpthread", "-ldl"],
+        "//conditions:default": [
+            "-lpthread",
+            "-ldl",
+        ],
     }),
     linkstatic = True,
     visibility = ["//visibility:public"],
 )
-
