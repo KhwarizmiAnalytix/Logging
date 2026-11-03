@@ -161,9 +161,10 @@ class BazelSetupTests(unittest.TestCase):
             root = Path(directory)
             sandbox = root / "sandbox"
             sandbox.mkdir()
+            stale = sandbox / "stale.profraw"
+            stale.write_bytes(b"stale profile")
             execution = root / "exec"
             execution.mkdir()
-            (execution / "test-binary").touch()
             b = self.build(["coverage", "--compiler", "clang"])
             tested = False
 
@@ -184,7 +185,12 @@ class BazelSetupTests(unittest.TestCase):
                 nonlocal tested
                 if action == "coverage":
                     tested = True
-                    (sandbox / "test.profraw").write_bytes(b"profile")
+                    self.assertFalse(stale.exists())
+                    (execution / "test-binary").touch()
+                    profile = sandbox / "test.profraw"
+                    profile.write_bytes(b"profile")
+                    # Simulate an mtime rounded below the invocation's wall time.
+                    os.utime(profile, (1, 1))
                 return Mock(stdout="test-binary\n")
 
             def tool(command, **kwargs):

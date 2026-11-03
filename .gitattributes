@@ -1,0 +1,6 @@
+# Bazel hashes extension source bytes in MODULE.bazel.lock. Keep them identical
+# on Windows and POSIX, including checkouts with core.autocrlf=true.
+*.bzl text eol=lf
+*.bazel text eol=lf
+*.BUILD text eol=lf
+MODULE.bazel.lock text eol=lf

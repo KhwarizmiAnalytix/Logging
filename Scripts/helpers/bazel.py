@@ -8,7 +8,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 
 BACKENDS = ("native", "loguru", "glog", "spdlog")
 ACTIONS = {"config", "build", "test", "coverage", "clean"}
@@ -161,9 +160,14 @@ def compiler_pair(compiler):
         )
     if re.fullmatch(r"(?:gcc|g\+\+)(?:-\d+)?", name):
         if "g++" in name:
-            return str(
-                Path(compiler).with_name(Path(compiler).name.replace("g++", "gcc", 1))
-            ), compiler
+            return (
+                str(
+                    Path(compiler).with_name(
+                        Path(compiler).name.replace("g++", "gcc", 1)
+                    )
+                ),
+                compiler,
+            )
         return compiler, str(
             Path(compiler).with_name(Path(compiler).name.replace("gcc", "g++", 1))
         )
@@ -294,12 +298,17 @@ class BazelBuild:
             binaries = [
                 execution_root / line
                 for line in result.stdout.splitlines()
-                if (execution_root / line).is_file()
+                if line.strip()
             ]
             if not binaries:
                 raise RuntimeError("Could not resolve coverage test executables")
             merged = coverage_dir / "logging.profdata"
-            since = time.time()
+            # Remove old generated profiles before running tests. Comparing their
+            # mtimes to wall time can discard fresh files on coarse filesystems.
+            for root in roots:
+                if root.is_dir():
+                    for profile in root.rglob("*.profraw"):
+                        profile.unlink(missing_ok=True)
             self.run("coverage", extra)
             # Resolve paths before the tests and snapshot profiles immediately
             # afterwards. A subsequent Bazel invocation can recycle the stash.
@@ -311,7 +320,7 @@ class BazelBuild:
                         for profile in root.rglob("*.profraw"):
                             try:
                                 resolved = profile.resolve()
-                                if resolved in seen or profile.stat().st_mtime < since:
+                                if resolved in seen:
                                     continue
                                 destination = Path(raw) / (
                                     str(len(profiles)) + ".profraw"
@@ -335,6 +344,10 @@ class BazelBuild:
                 "-ignore-filename-regex=(/external/|/ThirdParty/|^/opt/|^/usr/|^/Applications/)",
             ]
             for binary in binaries:
+                # cquery analyzes targets without building their outputs. Check
+                # existence only after coverage has built and run the tests.
+                if not binary.is_file():
+                    raise RuntimeError(f"Coverage test executable is missing: {binary}")
                 command.extend(["-object", str(binary)])
             result = subprocess.run(command, check=True, capture_output=True, text=True)
             content = re.sub(
