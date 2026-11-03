@@ -55,6 +55,12 @@ struct config
     signal_config signals;
 
     /**
+     * Enable ANSI color codes on stderr (loguru backend only).
+     * Default: true (matches loguru's own default).
+     */
+    bool color = true;
+
+    /**
      * Thread name for this thread (optional).
      * Default: empty (no explicit naming).
      */

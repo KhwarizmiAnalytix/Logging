@@ -201,6 +201,7 @@ public:
     {
         loguru::g_preamble_date      = false;
         loguru::g_preamble_time      = false;
+        loguru::g_colorlogtostderr   = options.color;
         loguru::g_internal_verbosity = static_cast<loguru::Verbosity>(internal_verbosity_);
 
         const auto current_stderr_verbosity = loguru::g_stderr_verbosity;
@@ -223,6 +224,7 @@ public:
         {
             loguru_options.main_thread_name = options.main_thread_name;
         }
+        color_mode_ = options.color;
         loguru::init(argc, argv, loguru_options);
         loguru::g_stderr_verbosity = current_stderr_verbosity;
         apply_console();
@@ -275,6 +277,41 @@ private:
         }
     }
 
+    // Writes ANSI-colored output directly to stderr, bypassing loguru's own
+    // isatty-gated color path. Used when color_mode_ is true so that colored
+    // output works even when stderr is not a TTY (e.g. under CTest).
+    static void color_stderr_callback(void* /*user_data*/, const loguru::Message& message)
+    {
+        const char* color;
+        const char* reset = "\033[0m";
+        const auto  v     = message.verbosity;
+        if (v == loguru::Verbosity_FATAL)
+        {
+            color = "\033[1;31m";  // bold red
+        }
+        else if (v == loguru::Verbosity_ERROR)
+        {
+            color = "\033[31m";  // red
+        }
+        else if (v == loguru::Verbosity_WARNING)
+        {
+            color = "\033[33m";  // yellow
+        }
+        else
+        {
+            color = "";  // default for INFO and below
+        }
+        std::fprintf(stderr,
+            "%s%s%s%s%s%s\n",
+            color,
+            message.preamble    ? message.preamble    : "",
+            message.indentation ? message.indentation : "",
+            message.prefix      ? message.prefix      : "",
+            message.message     ? message.message     : "",
+            reset);
+        std::fflush(stderr);
+    }
+
     void apply_console()
     {
         const bool enabled = console_mode_.load(std::memory_order_relaxed);
@@ -284,9 +321,41 @@ private:
             shared::ensure_windows_console();
         }
 #endif
-        loguru::g_stderr_verbosity =
-            enabled ? static_cast<loguru::Verbosity>(requested_verbosity_) : loguru::Verbosity_OFF;
+        const std::scoped_lock guard(ids_mutex_);
+        if (color_mode_)
+        {
+            // Remove any existing color callback before (re-)adding to update
+            // the verbosity threshold or handle toggling.
+            if (color_callback_active_)
+            {
+                loguru::remove_callback(k_color_cb_id);
+                color_callback_active_ = false;
+            }
+            if (enabled)
+            {
+                loguru::add_callback(k_color_cb_id,
+                    color_stderr_callback,
+                    nullptr,
+                    static_cast<loguru::Verbosity>(requested_verbosity_));
+                color_callback_active_ = true;
+            }
+            // Suppress loguru's own (uncolored) stderr so there is no duplicate.
+            loguru::g_stderr_verbosity = loguru::Verbosity_OFF;
+        }
+        else
+        {
+            if (color_callback_active_)
+            {
+                loguru::remove_callback(k_color_cb_id);
+                color_callback_active_ = false;
+            }
+            loguru::g_stderr_verbosity =
+                enabled ? static_cast<loguru::Verbosity>(requested_verbosity_)
+                        : loguru::Verbosity_OFF;
+        }
     }
+
+    static constexpr const char* k_color_cb_id = "logging_color_stderr";
 
     // Per-thread name shadow (loguru tracks its own too, but we mirror it so
     // get_thread_name is consistent across backends).
@@ -295,6 +364,8 @@ private:
     std::atomic<bool>     console_mode_{true};
     logger_verbosity_enum requested_verbosity_{logger_verbosity_enum::VERBOSITY_INFO};
     logger_verbosity_enum internal_verbosity_{logger_verbosity_enum::VERBOSITY_INFO};
+    bool                  color_mode_{true};
+    bool                  color_callback_active_{false};
 
     std::mutex                      ids_mutex_;
     std::unordered_set<std::string> registered_ids_;

@@ -27,6 +27,7 @@ struct init_options
     bool        sigint                = false;
     bool        sigsegv               = false;
     bool        sigterm               = false;
+    bool        color                 = true;
 };
 
 }  // namespace backend

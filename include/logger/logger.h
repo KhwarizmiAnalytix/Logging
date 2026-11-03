@@ -187,6 +187,7 @@ public:
     LOGGING_API static bool enable_sigint_handler;
     LOGGING_API static bool enable_sigsegv_handler;
     LOGGING_API static bool enable_sigterm_handler;
+    LOGGING_API static bool enable_color_output;
 
     LOGGING_DELETE_COPY_AND_MOVE(logger)
 

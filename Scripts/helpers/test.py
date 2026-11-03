@@ -44,6 +44,10 @@ def run_ctest(
             ctest_cmd.append(verbosity)
 
         env = os.environ.copy()
+        # COLORTERM=truecolor signals color support to child processes.
+        # Honour the NO_COLOR opt-out standard when it is set.
+        if "NO_COLOR" not in env:
+            env.setdefault("COLORTERM", "truecolor")
 
         if sanitizer_type and source_path:
             for selected_type in sanitizer_type.split(","):

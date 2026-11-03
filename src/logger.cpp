@@ -71,6 +71,7 @@ bool                  logger::enable_sigill_handler        = false;
 bool                  logger::enable_sigint_handler        = false;
 bool                  logger::enable_sigsegv_handler       = false;
 bool                  logger::enable_sigterm_handler       = false;
+bool                  logger::enable_color_output          = true;
 logger_verbosity_enum logger::internal_verbosity_level_    = logger_verbosity_enum::VERBOSITY_INFO;
 
 logger::logger() = default;
@@ -299,6 +300,7 @@ void logger::init(int& argc, char* argv[], const char* verbosity_flag)
     options.sigint                = enable_sigint_handler;
     options.sigsegv               = enable_sigsegv_handler;
     options.sigterm               = enable_sigterm_handler;
+    options.color                 = enable_color_output;
 
     backend::active_backend().on_init(argc, argv, options);
 }
@@ -327,6 +329,8 @@ void logger::init(const logging::config& cfg)
         enable_sigsegv_handler = cfg.signals.sigsegv;
         enable_sigterm_handler = cfg.signals.sigterm;
     }
+
+    enable_color_output = cfg.color;
 
     if (cfg.thread_name)
     {
