@@ -203,7 +203,7 @@ TEST(BackTrace, set_stack_trace_on_error)
 
 TEST(BackTrace, usage_in_logging)
 {
-    LOGGING_LOG_INFO("Error occurred at:\n{}", logging::back_trace::print(0, 5));
+    LOGGING_LOG_ERROR("Error occurred at:\n{}", logging::back_trace::print(0, 5));
 }
 
 TEST(BackTrace, usage_in_compact_logging)
