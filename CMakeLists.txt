@@ -386,6 +386,19 @@ set(LOGURU_WITH_STREAMS ON CACHE BOOL "Enable streams in loguru" FORCE)
 # / clang 9.0 CI containers use an older glibc that still needs the explicit
 # link, so set this to keep both defaults consistent.
 set(LOGURU_STACKTRACES ON CACHE BOOL "Enable loguru stack traces" FORCE)
+# On Apple platforms CMAKE_DL_LIBS is empty because dladdr() is part of
+# libSystem and needs no extra -ldl. loguru's CMakeLists.txt treats an empty
+# CMAKE_DL_LIBS as "dl not found" and silently disables LOGURU_STACKTRACES.
+# /usr/lib/libdl.dylib is a valid stub on macOS, so setting the variable here
+# satisfies loguru's check without breaking the link.
+if (APPLE AND NOT CMAKE_DL_LIBS)
+  include(CheckSymbolExists)
+  check_symbol_exists(dladdr "dlfcn.h" _LOGGING_HAVE_DLADDR)
+  if (_LOGGING_HAVE_DLADDR)
+    set(CMAKE_DL_LIBS "dl")
+  endif()
+  unset(_LOGGING_HAVE_DLADDR)
+endif()
 
 # glog-specific options
 set(BUILD_EXAMPLES OFF CACHE BOOL "Disable glog examples" FORCE)
