@@ -203,11 +203,12 @@ TEST(BackTrace, set_stack_trace_on_error)
 
 TEST(BackTrace, usage_in_logging)
 {
+    logger::init();
     LOGGING_LOG_ERROR("Error occurred at:\n{}", logging::back_trace::print(0, 5));
 }
 
 TEST(BackTrace, usage_in_compact_logging)
 {
-    // Test that compact backtrace can be used in logging
+    logger::init();
     LOGGING_LOG_INFO("Call chain: {}", logging::back_trace::compact(5));
 }
