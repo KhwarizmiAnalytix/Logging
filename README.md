@@ -201,8 +201,10 @@ cleaning. `clean` uses a normal workspace-scoped Bazel clean. `--output-root`
 places Bazel state and convenience links under the selected directory.
 
 Coverage uses fresh test results, instruments project targets, and validates
-that the LCOV report has source and line records. Clang collection uses matching
-`llvm-profdata`/`llvm-cov` tools; GCC uses Bazel's combined LCOV report. Collection
-is supported on Linux/macOS and fails if no usable data is produced. With
+that the LCOV report has source and line records. Clang collection enables LLVM
+instrumentation and exports LCOV inside each test action before sandbox cleanup,
+using matching `llvm-profdata`/`llvm-cov` tools. GCC uses Bazel's combined LCOV
+report. Collection is supported on Linux/macOS and fails if no usable data is
+produced. With
 `--output-root DIR`, Clang writes `DIR/links/out/_coverage/logging.lcov`;
 `genhtml`, when installed, additionally produces HTML.

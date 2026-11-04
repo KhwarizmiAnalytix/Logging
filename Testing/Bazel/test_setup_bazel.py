@@ -156,62 +156,102 @@ class BazelSetupTests(unittest.TestCase):
         )
 
     @unittest.skipIf(os.name == "nt", "Clang/GCC coverage is a POSIX workflow")
-    def test_llvm_profiles_are_saved_before_any_followup_bazel_command(self):
+    def test_clang_coverage_exports_lcov_before_sandbox_cleanup(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            sandbox = root / "sandbox"
-            sandbox.mkdir()
-            stale = sandbox / "stale.profraw"
-            stale.write_bytes(b"stale profile")
-            execution = root / "exec"
-            execution.mkdir()
-            b = self.build(["coverage", "--compiler", "clang"])
-            tested = False
+            coverage = root / "out/_coverage"
+            coverage.mkdir(parents=True)
+            combined = coverage / "_coverage_report.dat"
+            report = coverage / "logging.lcov"
+            combined.write_text("stale combined report")
+            report.write_text("stale exported report")
+            b = self.build(["coverage", "--compiler", "clang"], root)
 
-            def info(key):
-                self.assertFalse(
-                    tested, "Bazel must not recycle profiles before merging"
+            def run(action, extra):
+                self.assertEqual(action, "coverage")
+                self.assertFalse(combined.exists())
+                self.assertFalse(report.exists())
+                self.assertIn("--repo_env=BAZEL_USE_LLVM_NATIVE_COVERAGE=1", b.flags)
+                self.assertIn("--repo_env=GCOV=/llvm/llvm-profdata", b.flags)
+                self.assertIn("--repo_env=BAZEL_LLVM_COV=/llvm/llvm-cov", b.flags)
+                self.assertIn("--copt=-fcoverage-compilation-dir=.", b.flags)
+                self.assertIn("--experimental_use_llvm_covmap", extra)
+                self.assertIn("--experimental_generate_llvm_lcov", extra)
+                self.assertIn("--cache_test_results=no", extra)
+                self.assertIn("--instrument_test_targets", extra)
+                # Bazel retains the combined report even after deleting the
+                # test sandbox and its raw profiles.
+                combined.write_text(
+                    "SF:/tmp/bazel/execroot/_main/src/logger.cpp\n"
+                    "DA:1,1\nend_of_record\n"
                 )
-                return str(
-                    {
-                        "output_base": root,
-                        "output_path": root / "out",
-                        "bazel-testlogs": root / "logs",
-                        "execution_root": execution,
-                    }[key]
-                )
-
-            def run(action, *args, **kwargs):
-                nonlocal tested
-                if action == "coverage":
-                    tested = True
-                    self.assertFalse(stale.exists())
-                    (execution / "test-binary").touch()
-                    profile = sandbox / "test.profraw"
-                    profile.write_bytes(b"profile")
-                    # Simulate an mtime rounded below the invocation's wall time.
-                    os.utime(profile, (1, 1))
-                return Mock(stdout="test-binary\n")
-
-            def tool(command, **kwargs):
-                if command[0] == "llvm-profdata":
-                    self.assertTrue(tested)
-                    self.assertEqual(len(command[5:]), 1)
-                    self.assertEqual(Path(command[5]).read_bytes(), b"profile")
-                    self.assertNotEqual(Path(command[5]).parent, sandbox)
-                return Mock(stdout="SF:source.cpp\nDA:1,1\nend_of_record\n")
 
             with (
-                patch.object(b, "info", side_effect=info),
-                patch.object(b, "run", side_effect=run),
-                patch.object(b, "llvm_tool", side_effect=lambda name: name),
-                patch.object(bazel.subprocess, "run", side_effect=tool),
+                patch.object(b, "info", return_value=str(root / "out")) as info,
+                patch.object(b, "run", side_effect=run) as coverage_run,
+                patch.object(b, "llvm_tool", side_effect=lambda name: "/llvm/" + name),
                 patch.object(bazel.shutil, "which", return_value=None),
             ):
                 b.coverage()
-            self.assertTrue(
-                bazel.valid_lcov((root / "out/_coverage/logging.lcov").read_text())
+            info.assert_called_once_with("output_path")
+            coverage_run.assert_called_once()
+            self.assertEqual(
+                report.read_text(),
+                f"SF:{b.root}/src/logger.cpp\nDA:1,1\nend_of_record\n",
             )
+
+    @unittest.skipIf(os.name == "nt", "Clang/GCC coverage is a POSIX workflow")
+    def test_missing_or_empty_coverage_cannot_reuse_stale_reports(self):
+        for compiler in ("clang", "gcc"):
+            for content in (None, "", "SF:source.cpp\nend_of_record\n"):
+                with self.subTest(compiler=compiler, content=content):
+                    with tempfile.TemporaryDirectory() as directory:
+                        root = Path(directory)
+                        coverage = root / "_coverage"
+                        coverage.mkdir()
+                        combined = coverage / "_coverage_report.dat"
+                        report = coverage / "logging.lcov"
+                        stale = "SF:stale.cpp\nDA:1,1\nend_of_record\n"
+                        combined.write_text(stale)
+                        report.write_text(stale)
+                        b = self.build(["coverage", "--compiler", compiler])
+
+                        def run(*args):
+                            if content is not None:
+                                combined.write_text(content)
+
+                        with (
+                            patch.object(b, "info", return_value=str(root)),
+                            patch.object(b, "run", side_effect=run),
+                            patch.object(b, "llvm_tool", side_effect=lambda name: name),
+                            self.assertRaisesRegex(RuntimeError, "no usable LCOV"),
+                        ):
+                            b.coverage()
+                        if compiler == "clang":
+                            self.assertFalse(report.exists())
+
+    @unittest.skipIf(os.name == "nt", "Clang/GCC coverage is a POSIX workflow")
+    def test_gcc_coverage_keeps_combined_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            combined = root / "_coverage/_coverage_report.dat"
+            content = "SF:src/logger.cpp\nDA:1,1\nend_of_record\n"
+            b = self.build(["coverage", "--compiler", "gcc"])
+
+            def run(action, extra):
+                self.assertEqual(action, "coverage")
+                combined.write_text(content)
+
+            with (
+                patch.object(b, "info", return_value=str(root)),
+                patch.object(b, "run", side_effect=run),
+                patch.object(b, "llvm_tool") as llvm_tool,
+                patch.object(bazel.shutil, "which", return_value=None),
+            ):
+                b.coverage()
+            llvm_tool.assert_not_called()
+            self.assertEqual(combined.read_text(), content)
+            self.assertFalse((root / "_coverage/logging.lcov").exists())
 
 
 if __name__ == "__main__":

@@ -7,7 +7,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 
 BACKENDS = ("native", "loguru", "glog", "spdlog")
 ACTIONS = {"config", "build", "test", "coverage", "clean"}
@@ -270,97 +269,40 @@ class BazelBuild:
             "--cache_test_results=no",
             "--test_output=" + self.settings["test_output"],
         ]
-        llvm_profdata = self.llvm_tool("llvm-profdata") if clang else None
-        llvm_cov = self.llvm_tool("llvm-cov") if clang else None
+        if clang:
+            # Linux otherwise defaults to gcov instrumentation, even with Clang.
+            # Export LCOV inside the test action, before sandbox cleanup removes
+            # the raw profiles. GCOV is Bazel's merge-tool path for LLVM too.
+            self.flags.extend(
+                [
+                    "--repo_env=BAZEL_USE_LLVM_NATIVE_COVERAGE=1",
+                    "--repo_env=GCOV=" + self.llvm_tool("llvm-profdata"),
+                    "--repo_env=BAZEL_LLVM_COV=" + self.llvm_tool("llvm-cov"),
+                    # Match Bazel's workspace-relative source manifest on macOS.
+                    "--copt=-fcoverage-compilation-dir=.",
+                ]
+            )
+            extra.extend(
+                [
+                    "--experimental_use_llvm_covmap",
+                    "--experimental_generate_llvm_lcov",
+                ]
+            )
         coverage_dir = Path(self.info("output_path")) / "_coverage"
         coverage_dir.mkdir(parents=True, exist_ok=True)
-        (coverage_dir / ("logging.lcov" if clang else "_coverage_report.dat")).unlink(
-            missing_ok=True
+        combined = coverage_dir / "_coverage_report.dat"
+        report = coverage_dir / "logging.lcov" if clang else combined
+        # Never accept a report left by an earlier invocation.
+        combined.unlink(missing_ok=True)
+        report.unlink(missing_ok=True)
+        self.run("coverage", extra)
+        content = combined.read_text(encoding="utf-8") if combined.is_file() else ""
+        content = re.sub(
+            r"^SF:.*?/execroot/[^/]+/",
+            "SF:" + str(self.root) + "/",
+            content,
+            flags=re.MULTILINE,
         )
-        if clang:
-            output_base = Path(self.info("output_base"))
-            roots = [output_base / "sandbox", Path(self.info("bazel-testlogs"))]
-            # cquery resolves the actual configured executables, including aliases.
-            expression = 'kind("cc_test", set(%s))' % " ".join(self.targets)
-            result = self.run(
-                "cquery",
-                [
-                    "--collect_code_coverage",
-                    "--instrumentation_filter=^//",
-                    "--instrument_test_targets",
-                    expression,
-                    "--output=files",
-                ],
-                targets=False,
-                capture=True,
-            )
-            execution_root = Path(self.info("execution_root"))
-            binaries = [
-                execution_root / line
-                for line in result.stdout.splitlines()
-                if line.strip()
-            ]
-            if not binaries:
-                raise RuntimeError("Could not resolve coverage test executables")
-            merged = coverage_dir / "logging.profdata"
-            # Remove old generated profiles before running tests. Comparing their
-            # mtimes to wall time can discard fresh files on coarse filesystems.
-            for root in roots:
-                if root.is_dir():
-                    for profile in root.rglob("*.profraw"):
-                        profile.unlink(missing_ok=True)
-            self.run("coverage", extra)
-            # Resolve paths before the tests and snapshot profiles immediately
-            # afterwards. A subsequent Bazel invocation can recycle the stash.
-            with tempfile.TemporaryDirectory(prefix="raw-", dir=coverage_dir) as raw:
-                profiles = []
-                seen = set()
-                for root in roots:
-                    if root.is_dir():
-                        for profile in root.rglob("*.profraw"):
-                            try:
-                                resolved = profile.resolve()
-                                if resolved in seen:
-                                    continue
-                                destination = Path(raw) / (
-                                    str(len(profiles)) + ".profraw"
-                                )
-                                shutil.copyfile(profile, destination)
-                                profiles.append(str(destination))
-                                seen.add(resolved)
-                            except FileNotFoundError:
-                                continue
-                if not profiles:
-                    raise RuntimeError("Coverage tests produced no fresh LLVM profiles")
-                subprocess.run(
-                    [llvm_profdata, "merge", "-sparse", "-o", str(merged), *profiles],
-                    check=True,
-                )
-            command = [
-                llvm_cov,
-                "export",
-                "-format=lcov",
-                "-instr-profile=" + str(merged),
-                "-ignore-filename-regex=(/external/|/ThirdParty/|^/opt/|^/usr/|^/Applications/)",
-            ]
-            for binary in binaries:
-                # cquery analyzes targets without building their outputs. Check
-                # existence only after coverage has built and run the tests.
-                if not binary.is_file():
-                    raise RuntimeError(f"Coverage test executable is missing: {binary}")
-                command.extend(["-object", str(binary)])
-            result = subprocess.run(command, check=True, capture_output=True, text=True)
-            content = re.sub(
-                r"^SF:.*?/execroot/[^/]+/",
-                "SF:" + str(self.root) + "/",
-                result.stdout,
-                flags=re.MULTILINE,
-            )
-            report = coverage_dir / "logging.lcov"
-        else:
-            self.run("coverage", extra)
-            report = coverage_dir / "_coverage_report.dat"
-            content = report.read_text(encoding="utf-8") if report.is_file() else ""
         if not valid_lcov(content):
             raise RuntimeError("Coverage collection produced no usable LCOV records")
         report.write_text(content, encoding="utf-8")
