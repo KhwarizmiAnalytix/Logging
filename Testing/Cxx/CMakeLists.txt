@@ -79,9 +79,13 @@ if(LOGGING_ENABLE_BENCHMARK)
     if(LOGGING_DEPENDENCY_INCLUDE_DIRS)
       target_include_directories(${target_name} PRIVATE ${LOGGING_DEPENDENCY_INCLUDE_DIRS})
     endif()
-    target_link_libraries(
-      ${target_name} PRIVATE Benchmark::benchmark Benchmark::benchmark_main Logging::Logging
-    )
+    if(bench_name STREQUAL "BenchmarkLogger")
+      target_link_libraries(${target_name} PRIVATE Benchmark::benchmark Logging::Logging)
+    else()
+      target_link_libraries(
+        ${target_name} PRIVATE Benchmark::benchmark Benchmark::benchmark_main Logging::Logging
+      )
+    endif()
     if(LOGGING_DEPENDENCY_LIBS)
       target_link_libraries(${target_name} PRIVATE ${LOGGING_DEPENDENCY_LIBS})
     endif()

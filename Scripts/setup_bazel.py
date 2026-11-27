@@ -5,6 +5,5 @@ import sys
 
 from helpers.bazel import dispatch
 
-
 if __name__ == "__main__":
     sys.exit(dispatch(sys.argv[1:]))

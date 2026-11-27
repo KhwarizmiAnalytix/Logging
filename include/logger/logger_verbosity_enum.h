@@ -5,6 +5,7 @@
 namespace logging
 {
 // inline with loguru's verbosity levels
+// NOLINTNEXTLINE(performance-enum-size): preserve this published enum's existing ABI.
 enum class logger_verbosity_enum : int
 {
     VERBOSITY_INVALID = -10,

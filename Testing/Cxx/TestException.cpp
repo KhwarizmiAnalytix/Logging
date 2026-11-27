@@ -413,6 +413,11 @@ TEST(Exception, constructors_and_accessors)
         logging::exception copy(original);
         ASSERT_EQ(std::string(copy.msg()), std::string(original.msg()));
         ASSERT_EQ(copy.category(), original.category());
+        const auto original_context_size = original.context().size();
+        copy.add_context("Copy-only context");
+        EXPECT_EQ(copy.context().size(), original_context_size + 1);
+        EXPECT_EQ(copy.context().back(), "Copy-only context");
+        EXPECT_EQ(original.context().size(), original_context_size);
     }
 }
 
@@ -537,6 +542,7 @@ TEST(Exception, init_exception_mode_from_env)
     std::vector<std::thread> threads;
     std::atomic<int>         success_count{0};
 
+    threads.reserve(10);
     for (int i = 0; i < 10; ++i)
     {
         threads.emplace_back(
@@ -583,7 +589,7 @@ TEST(Exception, check_fail_basic)
     catch (const logging::exception& e)
     {
         // Verify the exception was thrown
-        std::string msg(e.msg());
+        const std::string& msg(e.msg());
         ASSERT_TRUE(msg.find("Test error message") != std::string::npos);
     }
 
@@ -596,7 +602,7 @@ TEST(Exception, check_fail_basic)
     catch (const logging::exception& e)
     {
         // Verify source location is in the backtrace
-        std::string backtrace(e.backtrace());
+        const std::string& backtrace(e.backtrace());
         ASSERT_TRUE(backtrace.find("my_function") != std::string::npos);
         ASSERT_TRUE(backtrace.find("my_file.cpp") != std::string::npos);
         ASSERT_TRUE(backtrace.find("123") != std::string::npos);
@@ -624,7 +630,7 @@ TEST(Exception, check_fail_basic)
     }
     catch (const logging::exception&)
     {
-        // Exception was thrown, which is expected
+        SUCCEED() << "check_fail threw as expected";
     }
 
     // Verify we never reached the line after check_fail
@@ -651,7 +657,7 @@ TEST(Exception, check_fail_basic)
     catch (const logging::exception& e)
     {
         // Verify special characters are preserved
-        std::string msg(e.msg());
+        const std::string& msg(e.msg());
         ASSERT_TRUE(msg.find("Special chars") != std::string::npos);
     }
 }
@@ -677,7 +683,7 @@ TEST(Exception, check_fail_advanced)
     catch (const logging::exception& e)
     {
         // Verify long message is handled correctly
-        std::string msg(e.msg());
+        const std::string& msg(e.msg());
         ASSERT_EQ(msg.length(), 1000);
         ASSERT_EQ(msg, long_msg);
     }
@@ -691,7 +697,7 @@ TEST(Exception, check_fail_advanced)
     catch (const logging::exception& e)
     {
         // Verify unicode is preserved
-        std::string msg(e.msg());
+        const std::string& msg(e.msg());
         ASSERT_TRUE(msg.find("Unicode") != std::string::npos);
     }
 
@@ -704,7 +710,7 @@ TEST(Exception, check_fail_advanced)
     catch (const logging::exception& e)
     {
         // Verify message is preserved
-        std::string msg(e.msg());
+        const std::string& msg(e.msg());
         ASSERT_TRUE(msg.find("Error: value = 42") != std::string::npos);
     }
 
@@ -717,7 +723,7 @@ TEST(Exception, check_fail_advanced)
     catch (const logging::exception& e)
     {
         // Verify multiline message is preserved
-        std::string msg(e.msg());
+        const std::string& msg(e.msg());
         ASSERT_TRUE(msg.find("Line 1") != std::string::npos);
         ASSERT_TRUE(msg.find("Line 2") != std::string::npos);
         ASSERT_TRUE(msg.find("Line 3") != std::string::npos);
@@ -739,7 +745,7 @@ TEST(Exception, check_fail_advanced)
             ASSERT_TRUE(e.what() != nullptr);
 
             // Verify line number is in backtrace
-            std::string backtrace(e.backtrace());
+            const std::string& backtrace(e.backtrace());
             ASSERT_TRUE(backtrace.find(std::to_string(line)) != std::string::npos);
         }
     }

@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <exception>
 #include <filesystem>
 #include <mutex>
 #include <string>
@@ -112,15 +113,13 @@ private:
     int saved_{-1};
 };
 
-class LoggerBench : public benchmark::Fixture
-{
-public:
-    void SetUp(const ::benchmark::State& /*state*/) override { ensure_logger_init(); }
-};
 }  // namespace
 
-BENCHMARK_DEFINE_F(LoggerBench, DisabledInfo)(benchmark::State& state)
+namespace
 {
+void disabled_info(benchmark::State& state)
+{
+    ensure_logger_init();
     logging::logger::set_stderr_verbosity(logging::logger_verbosity_enum::VERBOSITY_OFF);
     std::int64_t i = 0;
     for (auto _ : state)
@@ -132,8 +131,9 @@ BENCHMARK_DEFINE_F(LoggerBench, DisabledInfo)(benchmark::State& state)
     state.SetLabel(backend_name());
 }
 
-BENCHMARK_DEFINE_F(LoggerBench, FileLiteral)(benchmark::State& state)
+void file_literal(benchmark::State& state)
 {
+    ensure_logger_init();
     logging::logger::set_stderr_verbosity(logging::logger_verbosity_enum::VERBOSITY_INFO);
     const stderr_silencer silence;
     const std::string     path = file_path_for_thread(state.thread_index());
@@ -150,8 +150,9 @@ BENCHMARK_DEFINE_F(LoggerBench, FileLiteral)(benchmark::State& state)
     state.SetLabel(backend_name());
 }
 
-BENCHMARK_DEFINE_F(LoggerBench, FileFormatted)(benchmark::State& state)
+void file_formatted(benchmark::State& state)
 {
+    ensure_logger_init();
     logging::logger::set_stderr_verbosity(logging::logger_verbosity_enum::VERBOSITY_INFO);
     const stderr_silencer silence;
     const std::string     path = file_path_for_thread(state.thread_index());
@@ -170,8 +171,9 @@ BENCHMARK_DEFINE_F(LoggerBench, FileFormatted)(benchmark::State& state)
     state.SetLabel(backend_name());
 }
 
-BENCHMARK_DEFINE_F(LoggerBench, CallbackDiscard)(benchmark::State& state)
+void callback_discard(benchmark::State& state)
 {
+    ensure_logger_init();
 #if LOGGING_HAS_GLOG
     state.SkipWithError("glog does not support callbacks");
     return;
@@ -191,8 +193,30 @@ BENCHMARK_DEFINE_F(LoggerBench, CallbackDiscard)(benchmark::State& state)
     state.SetLabel(backend_name());
 #endif
 }
+}  // namespace
 
-BENCHMARK_REGISTER_F(LoggerBench, DisabledInfo)->Threads(1)->Threads(4);
-BENCHMARK_REGISTER_F(LoggerBench, FileLiteral)->Threads(1);
-BENCHMARK_REGISTER_F(LoggerBench, FileFormatted)->Threads(1);
-BENCHMARK_REGISTER_F(LoggerBench, CallbackDiscard)->Threads(1);
+int main(int argc, char** argv)
+{
+    try
+    {
+        benchmark::RegisterBenchmark("LoggerBench/DisabledInfo", disabled_info)
+            ->Threads(1)
+            ->Threads(4);
+        benchmark::RegisterBenchmark("LoggerBench/FileLiteral", file_literal)->Threads(1);
+        benchmark::RegisterBenchmark("LoggerBench/FileFormatted", file_formatted)->Threads(1);
+        benchmark::RegisterBenchmark("LoggerBench/CallbackDiscard", callback_discard)->Threads(1);
+        benchmark::Initialize(&argc, argv);
+        if (benchmark::ReportUnrecognizedArguments(argc, argv))
+        {
+            return 1;
+        }
+        benchmark::RunSpecifiedBenchmarks();
+        benchmark::Shutdown();
+    }
+    catch (const std::exception& error)
+    {
+        std::fprintf(stderr, "benchmark startup failed: %s\n", error.what());
+        return 1;
+    }
+    return 0;
+}

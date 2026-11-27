@@ -36,15 +36,25 @@ namespace detail
 inline spdlog::level::level_enum to_spdlog_min_level(logger_verbosity_enum v)
 {
     if (v <= logger_verbosity_enum::VERBOSITY_OFF)
+    {
         return spdlog::level::off;
+    }
     if (v <= logger_verbosity_enum::VERBOSITY_FATAL)
+    {
         return spdlog::level::critical;
+    }
     if (v <= logger_verbosity_enum::VERBOSITY_ERROR)
+    {
         return spdlog::level::err;
+    }
     if (v <= logger_verbosity_enum::VERBOSITY_WARNING)
+    {
         return spdlog::level::warn;
+    }
     if (v <= logger_verbosity_enum::VERBOSITY_INFO)
+    {
         return spdlog::level::info;
+    }
     return spdlog::level::trace;
 }
 

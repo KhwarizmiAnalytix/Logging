@@ -381,6 +381,7 @@ TEST_F(CoverageGaps, ExceptionRefreshWhat)
 {
     logging::exception ex("Initial", "", nullptr, logging::exception_category::GENERIC);
     std::string        initial = ex.what();
+    EXPECT_NE(initial.find("Initial"), std::string::npos);
     ex.add_context("New context");
     std::string after = ex.what();
     EXPECT_TRUE(std::string(after).find("New context") != std::string::npos);

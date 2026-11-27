@@ -304,10 +304,10 @@ private:
         std::fprintf(stderr,
             "%s%s%s%s%s%s\n",
             color,
-            message.preamble    ? message.preamble    : "",
+            message.preamble ? message.preamble : "",
             message.indentation ? message.indentation : "",
-            message.prefix      ? message.prefix      : "",
-            message.message     ? message.message     : "",
+            message.prefix ? message.prefix : "",
+            message.message ? message.message : "",
             reset);
         std::fflush(stderr);
     }
@@ -349,9 +349,9 @@ private:
                 loguru::remove_callback(k_color_cb_id);
                 color_callback_active_ = false;
             }
-            loguru::g_stderr_verbosity =
-                enabled ? static_cast<loguru::Verbosity>(requested_verbosity_)
-                        : loguru::Verbosity_OFF;
+            loguru::g_stderr_verbosity = enabled
+                                             ? static_cast<loguru::Verbosity>(requested_verbosity_)
+                                             : loguru::Verbosity_OFF;
         }
     }
 

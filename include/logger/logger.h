@@ -78,6 +78,7 @@ public:
      */
     LOGGING_API static void set_internal_verbosity_level(logger_verbosity_enum level);
 
+    // NOLINTNEXTLINE(performance-enum-size): preserve this published enum's existing ABI.
     enum class file_mode
     {
         truncate,

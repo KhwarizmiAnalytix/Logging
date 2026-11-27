@@ -40,8 +40,9 @@ cc_test(
         deps = [
             "//:Logging",
             "@com_google_benchmark//:benchmark",
+        ] + ([] if _src == "BenchmarkLogger.cpp" else [
             "@com_google_benchmark//:benchmark_main",
-        ],
+        ]),
     )
     for _src in glob(
         ["Benchmark*.cpp"],

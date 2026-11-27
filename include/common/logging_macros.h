@@ -126,6 +126,7 @@
 // ============================================================================
 // Non-copyable / non-movable types (logger/logger.h)
 // ============================================================================
+// NOLINTBEGIN(bugprone-macro-parentheses): macro arguments here are class type names.
 #define LOGGING_DELETE_COPY_AND_MOVE(type)                                                         \
 private:                                                                                           \
     type(const type&)              = delete;                                                       \
@@ -134,6 +135,8 @@ private:                                                                        
     type& operator=(type&&)        = delete;                                                       \
                                                                                                    \
 public:
+
+// NOLINTEND(bugprone-macro-parentheses)
 
 #endif  // LOGGING_PORTABLE_MACROS_INCLUDED_
 #endif  // LOGGING_COMMON_LOGGING_MACROS_H

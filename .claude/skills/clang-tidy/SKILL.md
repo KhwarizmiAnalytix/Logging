@@ -18,8 +18,9 @@ python3 setup.py config.build.ninja.clang.clangtidy
 Read the repository's CMake clang-tidy integration before enabling fix mode;
 fix flags can rewrite source during compilation.
 
-The repository's lintrunner configuration currently has no `CLANGTIDY`
-entry; use the build integration instead of assuming that lint code exists.
+The repository's lintrunner configuration has a `CLANGTIDY` entry covering
+first-party sources and tests, with vendored code excluded. It requires a
+`compile_commands.json` from a matching configured build.
 
 For an applicable C++ analysis:
 

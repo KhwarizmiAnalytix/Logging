@@ -1,4 +1,6 @@
 ---
+# Preserve established parameter ordering and deliberate numeric conversions.
+# Headers intentionally use #pragma once rather than include guards.
 Checks: >
   -*,
   bugprone-*,
@@ -9,7 +11,8 @@ Checks: >
   modernize-use-equals-default,
   readability-braces-around-statements,
   -bugprone-easily-swappable-parameters,
-  -bugprone-narrowing-conversions
-WarningsAsErrors: ''
-HeaderFilterRegex: ''
-FormatStyle: none
+  -bugprone-narrowing-conversions,
+  -portability-avoid-pragma-once
+WarningsAsErrors: '*'
+HeaderFilterRegex: '(^|.*/)(include|src|Testing|Tests|examples|Examples)/'
+FormatStyle: file

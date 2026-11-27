@@ -2,11 +2,11 @@
 
 import argparse
 import os
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 BACKENDS = ("native", "loguru", "glog", "spdlog")
 ACTIONS = {"config", "build", "test", "coverage", "clean"}

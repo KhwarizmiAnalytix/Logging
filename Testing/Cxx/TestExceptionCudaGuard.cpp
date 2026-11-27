@@ -25,6 +25,7 @@
 // branch, exactly as they would under nvcc/hipcc. No other header in this
 // repository inspects __CUDACC__/__HIPCC__, so this definition is safely
 // scoped to this one file.
+// NOLINTNEXTLINE(bugprone-reserved-identifier): simulate hipcc in this device-guard test.
 #define __HIPCC__ 1
 
 #include "LoggingTest.h"

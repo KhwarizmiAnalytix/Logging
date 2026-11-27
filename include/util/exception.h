@@ -30,6 +30,7 @@ namespace logging
  *
  * Controls whether exceptions are thrown or logged as fatal errors.
  */
+// NOLINTNEXTLINE(performance-enum-size): preserve this published enum's existing ABI.
 enum class exception_mode
 {
     THROW,     ///< Throw exceptions (default behavior)
@@ -76,6 +77,7 @@ LOGGING_API void init_exception_mode_from_env() noexcept;
  * Categorizes exceptions for better error handling and reporting.
  * Replaces the previous specialized exception class hierarchy.
  */
+// NOLINTNEXTLINE(performance-enum-size): preserve this published enum's existing ABI.
 enum class exception_category : int
 {
     GENERIC,          ///< Generic error (default)
@@ -357,30 +359,31 @@ inline std::string format_check_msg(const char* cond_str)
 #endif
 
 #define LOGGING_CHECK_ALL_POSITIVE(V)                                                              \
-    LOGGING_CHECK(std::all_of(V.begin(), V.end(), [](auto x) { return x > 0; }),                   \
+    LOGGING_CHECK(std::all_of((V).begin(), (V).end(), [](auto x) { return x > 0; }),               \
         "All elements must be positive");
 
 #define LOGGING_CHECK_ALL_FINITE(V)                                                                \
     LOGGING_CHECK(                                                                                 \
-        std::none_of(V.begin(), V.end(), [](auto x) { return std::isnan(x) || std::isinf(x); }),   \
+        std::none_of(                                                                              \
+            (V).begin(), (V).end(), [](auto x) { return std::isnan(x) || std::isinf(x); }),        \
         "All elements must be finite numbers");
 
 #define LOGGING_CHECK_STRICTLY_INCREASING(V)                                                       \
-    LOGGING_CHECK(                                                                                 \
-        std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a >= b; }) == V.end(),  \
+    LOGGING_CHECK(std::adjacent_find(                                                              \
+                      (V).begin(), (V).end(), [](auto a, auto b) { return a >= b; }) == (V).end(), \
         "Elements must be in strictly increasing order");
 
 #define LOGGING_CHECK_STRICTLY_DECREASING(V)                                                       \
-    LOGGING_CHECK(                                                                                 \
-        std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a <= b; }) == V.end(),  \
+    LOGGING_CHECK(std::adjacent_find(                                                              \
+                      (V).begin(), (V).end(), [](auto a, auto b) { return a <= b; }) == (V).end(), \
         "Elements must be in strictly decreasing order");
 
 #define LOGGING_CHECK_STRICTLY_ORDERED(V)                                                          \
     LOGGING_CHECK(                                                                                 \
-        ((std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a >= b; }) ==         \
-             V.end()) ||                                                                           \
-            (std::adjacent_find(V.begin(), V.end(), [](auto a, auto b) { return a <= b; }) ==      \
-                V.end())),                                                                         \
+        ((std::adjacent_find((V).begin(), (V).end(), [](auto a, auto b) { return a >= b; }) ==     \
+             (V).end()) ||                                                                         \
+            (std::adjacent_find((V).begin(), (V).end(), [](auto a, auto b) { return a <= b; }) ==  \
+                (V).end())),                                                                       \
         "Elements must be strictly ordered (increasing or decreasing)");
 
 /**

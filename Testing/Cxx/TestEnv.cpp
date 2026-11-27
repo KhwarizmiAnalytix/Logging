@@ -61,8 +61,12 @@ TEST(Env, set_get_has)
     env_var_guard guard(kFlag, "1");
     EXPECT_TRUE(has_env(kFlag));
     auto value = get_env(kFlag);
-    ASSERT_TRUE(value.has_value());
-    EXPECT_EQ(*value, "1");
+    if (!value.has_value())
+    {
+        FAIL() << "Expected the environment variable";
+        return;
+    }
+    EXPECT_EQ(value.value(), "1");
 }
 
 TEST(Env, check_env_bool_tokens)
@@ -70,14 +74,22 @@ TEST(Env, check_env_bool_tokens)
     {
         env_var_guard guard(kFlag, "1");
         auto          parsed = check_env(kFlag);
-        ASSERT_TRUE(parsed.has_value());
-        EXPECT_TRUE(*parsed);
+        if (!parsed.has_value())
+        {
+            FAIL() << "Expected a parsed boolean";
+            return;
+        }
+        EXPECT_TRUE(parsed.value());
     }
     {
         env_var_guard guard(kFlag, "0");
         auto          parsed = check_env(kFlag);
-        ASSERT_TRUE(parsed.has_value());
-        EXPECT_FALSE(*parsed);
+        if (!parsed.has_value())
+        {
+            FAIL() << "Expected a parsed boolean";
+            return;
+        }
+        EXPECT_FALSE(parsed.value());
     }
     {
         env_var_guard guard(kFlag, "maybe");

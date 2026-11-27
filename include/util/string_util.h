@@ -238,6 +238,7 @@ template <typename... Args> std::string format(std::string_view format_str, cons
 /**
  * @brief Padding specification for hexadecimal formatting
  */
+// NOLINTNEXTLINE(performance-enum-size): preserve this published enum's existing ABI.
 enum class hex_pad
 {
     none = 1,
