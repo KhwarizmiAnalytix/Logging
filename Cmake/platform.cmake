@@ -304,7 +304,12 @@ if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   endif()
 endif()
 
-if(APPLE)
+# The C++ runtime is the top-level project's choice. add_link_options() is
+# inherited by every subdirectory added later, so a nested Logging must not
+# pick one: mixing two libc++ copies in one process breaks cross-library
+# catch (const std::exception &). Only upstream/Homebrew LLVM ("Clang") ships
+# its own libc++; AppleClang uses the SDK headers and the system libc++.
+if(APPLE AND LOGGING_STANDALONE AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   message(STATUS "Applying macOS LLVM linker options")
 
   if(DEFINED PROJECT_LLVM_INSTALL_PREFIX AND PROJECT_LLVM_INSTALL_PREFIX)
