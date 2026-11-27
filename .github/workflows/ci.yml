@@ -254,9 +254,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/bazel-output
-          key: bazel-${{ runner.os }}-${{ runner.arch }}-${{ matrix.backend }}-${{ matrix.linkage }}-${{ hashFiles('.bazelversion', '.bazelrc', 'MODULE.bazel', 'MODULE.bazel.lock', 'BUILD.bazel', 'bazel/**', 'Testing/**/BUILD.bazel') }}-${{ github.sha }}
+          # The output root holds the auto-configured C++ toolchain, which bakes
+          # in the compiler's builtin include paths. Key on the runner image so
+          # an image upgrade (e.g. a new GCC/MSVC) never restores a stale one.
+          key: bazel-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-${{ matrix.backend }}-${{ matrix.linkage }}-${{ hashFiles('.bazelversion', '.bazelrc', 'MODULE.bazel', 'MODULE.bazel.lock', 'BUILD.bazel', 'bazel/**', 'Testing/**/BUILD.bazel') }}-${{ github.sha }}
           restore-keys: |
-            bazel-${{ runner.os }}-${{ runner.arch }}-${{ matrix.backend }}-${{ matrix.linkage }}-
+            bazel-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-${{ matrix.backend }}-${{ matrix.linkage }}-
 
       - name: Check setup helpers
         run: python3 -B -m unittest discover -s Testing/Bazel -p "test_*.py"

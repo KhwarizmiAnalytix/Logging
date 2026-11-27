@@ -16,6 +16,12 @@ coverage_report_dir = "coverage_report"
 # entirely (whole-build-dir capture), which is why CI (gcc) never caught this.
 modules = ["Logging"]
 
+[coverage.gcc]
+# coverage-tool's defaults plus "inconsistent": GCC 15 + lcov 2.x report
+# mismatched function end lines for gtest TEST bodies, which is a gcov
+# data quirk rather than a coverage gap.
+lcov_ignore_errors = ["mismatch", "negative", "gcov", "inconsistent"]
+
 [coverage.exclude]
 patterns = [
     "*ThirdParty*",

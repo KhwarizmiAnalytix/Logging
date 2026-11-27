@@ -682,8 +682,13 @@ if(LOGGING_DEPENDENCY_INCLUDE_DIRS)
   # public headers (fmt is confined to string_util.cpp; the active backend is an
   # implementation detail behind logger::), so a consumer linking
   # Logging::Logging never needs these on their own include path, and the
-  # installed package doesn't need to separately export them.
-  target_include_directories(Logging PRIVATE ${LOGGING_DEPENDENCY_INCLUDE_DIRS})
+  # installed package doesn't need to separately export them. SYSTEM keeps
+  # their own warnings out of our warnings-as-errors builds (-isystem, or
+  # /external:I with MSVC): e.g. fmt's Debug-only assert compares int with bool
+  # (C4804), which /WX would otherwise turn into an error in our sources.
+  target_include_directories(
+    Logging SYSTEM PRIVATE ${LOGGING_DEPENDENCY_INCLUDE_DIRS}
+  )
 endif()
 # Prefer the namespaced Fmt::fmt alias created by add_third_party_library. Fall
 # back to the canonical fmt targets when a host project already processed fmt

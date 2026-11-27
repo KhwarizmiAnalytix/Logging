@@ -27,6 +27,11 @@ def logging_copts(cstdlib_include = True):
             "/wd4267",
             "/wd4715",
             "/wd4018",
+            # Headers included with <> are third-party or system ones (project
+            # headers use quotes), so keep their warnings out of /WX: fmt's
+            # Debug-only assert compares int with bool (C4804).
+            "/external:anglebrackets",
+            "/external:W0",
             "/WX",
         ],
         "//conditions:default": [
